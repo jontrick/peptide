@@ -1,0 +1,10 @@
+{
+  "name": "Peptide Protocol",
+  "short_name": "Peptide",
+  "description": "Daily peptide protocol tracker",
+  "start_url": "/peptide/",
+  "display": "standalone",
+  "background_color": "#F2EDE4",
+  "theme_color": "#2C1A0E",
+  "orientation": "portrait"
+}
