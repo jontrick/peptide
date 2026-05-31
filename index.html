@@ -476,6 +476,10 @@ html,body{height:100%;background:var(--cream);color:var(--espresso);font-family:
     <div class="bnav-icon">📋</div>
     <div class="bnav-label">Today</div>
   </div>
+  <div class="bnav-item" onclick="navTo('roadmap',this)">
+    <div class="bnav-icon">🗺️</div>
+    <div class="bnav-label">Roadmap</div>
+  </div>
   <div class="bnav-item" onclick="navTo('recon',this)">
     <div class="bnav-icon">🔬</div>
     <div class="bnav-label">Recon</div>
@@ -487,8 +491,21 @@ html,body{height:100%;background:var(--cream);color:var(--espresso);font-family:
 </div>
 
 <!-- ════════════════════════════════════════
-     SCREEN: SETTINGS
+     SCREEN: ROADMAP
 ════════════════════════════════════════ -->
+<div class="screen" id="screenRoadmap">
+  <div style="padding:20px 16px 8px;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:22px;font-weight:700;color:var(--espresso);">24-Month Roadmap</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="roadmapSubtitle"></div>
+    </div>
+    <button onclick="renderRoadmap()" style="background:var(--card2);border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;">Refresh</button>
+  </div>
+  <div id="roadmapContent" style="padding:0 16px;"></div>
+  <div class="spacer"></div>
+</div>
+
+
 <div class="screen" id="screenSettings">
   <div style="padding:20px 16px 8px;">
     <div style="font-size:22px;font-weight:700;color:var(--espresso);margin-bottom:16px;">Settings</div>
@@ -1149,35 +1166,89 @@ const COMPOUND_DETAILS = {
 };
 
 // GOALS DATA
-const GOALS = [
-  { id:'fatloss', label:'Fat Loss', icon:'🔥' },
-  { id:'muscle', label:'Muscle & Strength', icon:'💪' },
-  { id:'recovery', label:'Recovery & Repair', icon:'🩹' },
-  { id:'antiageing', label:'Anti-ageing', icon:'⏳' },
-  { id:'cognitive', label:'Cognitive', icon:'🧠' },
-  { id:'sleep', label:'Sleep & Recovery', icon:'😴' },
-  { id:'hormonal', label:'Hormonal Balance', icon:'⚕️' },
-  { id:'energy', label:'Energy & Performance', icon:'⚡' },
-  { id:'immune', label:'Immune Support', icon:'🛡️' },
-  { id:'longevity', label:'Longevity', icon:'🧬' },
-  { id:'gut', label:'Gut Health', icon:'🫁' },
-  { id:'skin', label:'Skin & Collagen', icon:'✨' },
+const GOAL_GROUPS = [
+  {
+    group: 'Body Composition',
+    icon: '🔥',
+    goals: [
+      { id:'fatloss',    label:'Fat Loss',           detail:'Reduce body fat, improve body composition' },
+      { id:'muscle',     label:'Muscle & Strength',  detail:'Build lean mass, increase strength' },
+      { id:'recomp',     label:'Body Recomp',        detail:'Simultaneous fat loss + muscle gain' },
+    ]
+  },
+  {
+    group: 'Recovery & Repair',
+    icon: '🩹',
+    goals: [
+      { id:'injury',     label:'Injury Repair',      detail:'Tendons, ligaments, joints, acute damage' },
+      { id:'gut',        label:'Gut Health',          detail:'IBD, leaky gut, digestive repair' },
+      { id:'joint',      label:'Joint & Cartilage',  detail:'Chronic joint pain, mobility, cartilage' },
+      { id:'skin',       label:'Skin & Collagen',    detail:'Skin quality, collagen synthesis, scars' },
+    ]
+  },
+  {
+    group: 'Sleep & Stress',
+    icon: '😴',
+    goals: [
+      { id:'sleepqual',  label:'Sleep Quality',      detail:'Deeper sleep, less waking, better architecture' },
+      { id:'sleeponset', label:'Sleep Onset',        detail:'Falling asleep faster, racing thoughts' },
+      { id:'stress',     label:'Stress & Cortisol',  detail:'Lower cortisol, HRV improvement, resilience' },
+      { id:'anxiety',    label:'Anxiety & Mood',     detail:'Reduce anxiety, improve baseline mood' },
+    ]
+  },
+  {
+    group: 'Cognitive',
+    icon: '🧠',
+    goals: [
+      { id:'focus',      label:'Focus & Concentration', detail:'Sustained attention, task performance' },
+      { id:'memory',     label:'Memory & Learning',  detail:'Retention, recall, neuroplasticity' },
+      { id:'mood',       label:'Mood & Motivation',  detail:'Drive, positivity, motivation baseline' },
+      { id:'neuro',      label:'Neuroprotection',    detail:'Long-term brain health, BDNF, anti-ageing' },
+    ]
+  },
+  {
+    group: 'Metabolic & Energy',
+    icon: '⚡',
+    goals: [
+      { id:'energy',     label:'Energy & Endurance', detail:'Mitochondrial function, stamina, fatigue' },
+      { id:'insulin',    label:'Insulin Sensitivity',detail:'Glucose metabolism, metabolic flexibility' },
+      { id:'mito',       label:'Mitochondrial Health',detail:'Cellular energy production, ageing' },
+    ]
+  },
+  {
+    group: 'Longevity & Anti-ageing',
+    icon: '⏳',
+    goals: [
+      { id:'antiageing', label:'Anti-ageing',        detail:'Broad longevity, cellular health' },
+      { id:'telomere',   label:'Telomere Health',    detail:'Telomerase activation, cellular lifespan' },
+      { id:'immune',     label:'Immune Support',     detail:'Immune modulation, anti-viral, resilience' },
+      { id:'hormonal',   label:'Hormonal Balance',   detail:'GH axis, testosterone support, thyroid' },
+    ]
+  },
+  {
+    group: 'Performance',
+    icon: '🏋️',
+    goals: [
+      { id:'performance',label:'Athletic Performance',detail:'Speed, power, VO2, sport-specific gains' },
+      { id:'hrv',        label:'HRV & Recovery',     detail:'Heart rate variability, recovery metrics' },
+      { id:'libido',     label:'Sexual Health',      detail:'Libido, function, confidence' },
+    ]
+  },
 ];
 
-// GOAL → relevant compound categories
+// Flatten for lookups
+const GOALS = GOAL_GROUPS.flatMap(g => g.goals.map(goal => ({ ...goal, groupIcon: g.icon })));
+
 const GOAL_CATS = {
-  fatloss: ['Metabolic'],
-  muscle: ['GH/IGF','Repair'],
-  recovery: ['Repair','GH/IGF'],
-  antiageing: ['Longevity','Anti-ageing'],
-  cognitive: ['Cognitive'],
-  sleep: ['Sleep','GH/IGF'],
-  hormonal: ['Hormonal'],
-  energy: ['Metabolic','Longevity'],
-  immune: ['Immune'],
-  longevity: ['Longevity'],
-  gut: ['Repair'],
-  skin: ['Anti-ageing','Repair'],
+  fatloss:['Metabolic'], muscle:['GH/IGF','Repair'], recomp:['GH/IGF','Metabolic'],
+  injury:['Repair'], gut:['Repair'], joint:['Repair'], skin:['Anti-ageing','Repair'],
+  sleepqual:['Sleep','GH/IGF'], sleeponset:['Sleep','Cognitive'], stress:['Cognitive'],
+  anxiety:['Cognitive'], focus:['Cognitive'], memory:['Cognitive'], mood:['Cognitive'],
+  neuro:['Cognitive','Longevity'], energy:['Metabolic','Longevity'],
+  insulin:['Metabolic'], mito:['Metabolic','Longevity'],
+  antiageing:['Longevity'], telomere:['Longevity'], immune:['Immune'],
+  hormonal:['Hormonal'], performance:['GH/IGF','Metabolic'],
+  hrv:['Repair','GH/IGF'], libido:['Other'],
 };
 
 // ═══════════════════════════════════════════════
@@ -1222,7 +1293,7 @@ function today() { return dateStr(new Date()); }
 function showScreen(id, title) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const isRoot = ['screenHome','screenToday','screenRecon','screenSettings'].includes(id);
+  const isRoot = ['screenHome','screenToday','screenRecon','screenSettings','screenRoadmap'].includes(id);
   document.getElementById('navBack').classList.toggle('show', !isRoot);
   document.getElementById('mainNav').style.display = isRoot ? 'flex' : 'none';
   document.getElementById('navAction').textContent = '';
@@ -1238,12 +1309,13 @@ function goBack() {
 function navTo(name, el) {
   document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  const map = {home:'screenHome', today:'screenToday', recon:'screenRecon', settings:'screenSettings'};
+  const map = {home:'screenHome', today:'screenToday', recon:'screenRecon', settings:'screenSettings', roadmap:'screenRoadmap'};
   screenHistory = [map[name]];
   showScreen(map[name]);
   if (name === 'today') { viewDate = today(); renderTodayScreen(); }
   if (name === 'recon') renderReconScreen();
   if (name === 'home') renderHome();
+  if (name === 'roadmap') renderRoadmap();
 }
 
 // ═══════════════════════════════════════════════
@@ -1251,9 +1323,20 @@ function navTo(name, el) {
 // ═══════════════════════════════════════════════
 function initGoals() {
   const container = document.getElementById('goalChips');
-  container.innerHTML = GOALS.map(g =>
-    `<button class="goal-chip${selectedGoals.includes(g.id)?' active':''}" onclick="toggleGoal('${g.id}',this)">${g.icon} ${g.label}</button>`
-  ).join('');
+  let html = '';
+  GOAL_GROUPS.forEach(group => {
+    html += `<div style="width:100%;margin-bottom:4px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;">${group.icon} ${group.group}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+        ${group.goals.map(g => `
+          <button class="goal-chip${selectedGoals.includes(g.id)?' active':''}"
+            onclick="toggleGoal('${g.id}',this)"
+            title="${g.detail}">${g.label}</button>`
+        ).join('')}
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
   selectMode(buildMode);
 }
 
@@ -1405,8 +1488,207 @@ function closeDetailModal(e) {
 }
 
 // ═══════════════════════════════════════════════
-// WIZARD — COMPOUND DETAIL + CONFIG
+// ROADMAP — 24-MONTH OVERVIEW
 // ═══════════════════════════════════════════════
+
+// Hard-coded 24-month plan — compounds not yet in active stacks
+const ROADMAP_PLAN = [
+  // Phase 2 additions (Sep 2026) - these may already be in pipeline
+  { compoundId:'slu322',    phase:3, startDate:'2026-11-01', label:'Phase 3 — Exercise Mimetic', notes:'After MOTS-c Course 2. DMSO recon. 500mcg/day AM.' },
+  { compoundId:'oxytocin',  phase:3, startDate:'2026-11-01', label:'Phase 3 — Recovery & Wellbeing', notes:'100mcg 3-4×/week or nightly. Cortisol, sleep, fat loss support.' },
+  { compoundId:'aod9604',   phase:3, startDate:'2026-11-01', label:'Phase 3 — Lipolysis', notes:'300mcg fasted AM. Pairs with Reta and GH stack.' },
+  { compoundId:'motsc',     phase:3, startDate:'2026-10-14', label:'MOTS-c Course 2', notes:'Eligible from ~14 Oct 2026. 4 injections × every 5 days.' },
+  { compoundId:'epitalon',  phase:4, startDate:'2027-03-01', label:'Phase 4 — Epitalon Course 2', notes:'6 months after Course 1. 5mg/night × 20 nights.' },
+  { compoundId:'ghkcu',     phase:4, startDate:'2027-02-01', label:'Phase 4 — GHK-Cu Cycle 2', notes:'30 days on after 30 days off. Continue rotating cycles.' },
+];
+
+// Order schedule
+const ORDER_SCHEDULE = [
+  {
+    label: 'Phase 2 Order',
+    orderBy: '2026-06-14',
+    expectedDelivery: '2026-06-28',
+    compounds: ['BPC-157 10mg (BC10) ×10 — $87','TB-500 10mg (BT10) ×10 — $228','GHK-Cu 50mg (CU50) ×10 — $54','NAD+ 500mg (NJ500) ×10 — $120','Epitalon 10mg (ET10) ×10 — $91','Reta RT30 (RT30) ×10 — $290','Semax 5mg (XA5) ×10 — $67','DSIP 5mg (DS5) ×10 — $62','BAC Water 10mL (WA10) ×10 — $10'],
+    total: 1009,
+    urgent: true,
+  },
+  {
+    label: 'Phase 3 Order',
+    orderBy: '2026-10-01',
+    expectedDelivery: '2026-10-15',
+    compounds: ['SLU-PP-322 5mg (322) ×10 — $165','Oxytocin 2mg (OT2) ×10 — $62','AOD-9604 5mg (FR5) ×10 — $158','DMSO (source locally — pharmacy)','BPC top-up if needed','TB-500 top-up if needed'],
+    total: 385,
+    urgent: false,
+  },
+  {
+    label: 'Phase 4 Order',
+    orderBy: '2027-01-15',
+    expectedDelivery: '2027-01-29',
+    compounds: ['Epitalon 10mg (ET10) ×10 — $91 (Course 2)','GHK-Cu 50mg (CU50) ×10 — $54','NAD+ top-up as needed','Any other reorders'],
+    total: 145,
+    urgent: false,
+  },
+];
+
+function renderRoadmap() {
+  const el = document.getElementById('roadmapContent');
+  const subEl = document.getElementById('roadmapSubtitle');
+  if (!el) return;
+
+  subEl.textContent = `${fmtDate(today())} · ${activeStacks.length} compounds loaded`;
+
+  // Build compound timeline from active stacks + roadmap plan
+  const allCompounds = [
+    ...activeStacks.map(s => ({
+      ...s,
+      fromStack: true,
+      phase: s.status === 'pipeline' ? 2 : 1,
+    })),
+    ...ROADMAP_PLAN.filter(r => !activeStacks.find(s => s.compoundId === r.compoundId && s.startDate >= r.startDate)),
+  ];
+
+  // Group by phase
+  const phases = [
+    { num:1, label:'Phase 1 — Cycle 1', dateRange:'May – Aug 2026', color:'var(--terra)', desc:'Foundation: GH peptides, tissue repair, weekly Reta, MOTS-c course.' },
+    { num:2, label:'Phase 2 — Cycle 2', dateRange:'Sep – Nov 2026', color:'var(--teal)', desc:'Metabolic layer: Tesamorelin upgrade, NAD+, 5-AMQ, TB-500 loading, GHK-Cu standalone, Epitalon course, cognitive support.' },
+    { num:3, label:'Phase 3 — Cycle 3', dateRange:'Nov 2026 – Jan 2027', color:'var(--gold)', desc:'Exercise mimetics, longevity depth: SLU-PP-322, MOTS-c Course 2, Oxytocin, AOD-9604.' },
+    { num:4, label:'Phase 4 — Maintenance', dateRange:'Feb 2027+', color:'#8B7AB8', desc:'Ongoing cycling of proven compounds. Epitalon Course 2, continued Reta + GH axis, targeted additions based on results.' },
+  ];
+
+  let html = '';
+
+  // Phase cards
+  phases.forEach(phase => {
+    const phaseCompounds = allCompounds.filter(c => {
+      if (c.fromStack) {
+        if (phase.num === 1) return c.status === 'instock' || c.status === 'onorder';
+        if (phase.num === 2) return c.status === 'pipeline';
+      } else {
+        return c.phase === phase.num;
+      }
+      return false;
+    });
+
+    const continuousFromPrev = phase.num > 1 ? allCompounds.filter(c =>
+      c.fromStack && c.continuous && c.status === 'instock'
+    ) : [];
+
+    html += `
+    <div style="background:var(--card);border-radius:var(--r);margin-bottom:12px;overflow:hidden;">
+      <div style="background:${phase.color};padding:14px 16px;cursor:pointer;" onclick="toggleSection('phase-body-${phase.num}',this)">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#fff;">${phase.label}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;">${phase.dateRange}</div>
+          </div>
+          <div style="color:rgba(255,255,255,.7);font-size:18px;transition:.2s;" class="toggle-icon">⌄</div>
+        </div>
+      </div>
+      <div class="detail-collapsible${phase.num === 1 ? ' open' : ''}" id="phase-body-${phase.num}" style="padding:14px 16px;">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5;">${phase.desc}</div>`;
+
+    if (continuousFromPrev.length && phase.num > 1) {
+      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px;">Continuing</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        ${continuousFromPrev.map(c => {
+          const compound = COMPOUNDS.find(x => x.id === c.compoundId);
+          return compound ? `<span style="background:var(--card2);border-radius:100px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--muted);">${compound.emoji} ${compound.name}</span>` : '';
+        }).join('')}
+      </div>`;
+    }
+
+    if (phaseCompounds.length) {
+      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${phase.color};margin-bottom:8px;">${phase.num === 1 ? 'Active' : 'Adding in Phase ' + phase.num}</div>`;
+      phaseCompounds.forEach(c => {
+        const compound = COMPOUNDS.find(x => x.id === c.compoundId);
+        if (!compound) return;
+        const startFmt = c.startDate ? fmtDate(c.startDate) : '—';
+        const cycleWks = c.cycleWeeks || compound.cycleWeeks || 8;
+        const endDate = c.startDate ? addDays(c.startDate, cycleWks * 7) : null;
+        const isContinuous = c.continuous || compound.continuousOk;
+        html += `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--card2);">
+          <div style="font-size:20px;flex-shrink:0;">${compound.emoji}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:var(--espresso);">${compound.name}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px;">${startFmt}${isContinuous ? ' → continuous ∞' : endDate ? ' → ' + fmtDate(endDate) : ''}</div>
+            ${c.notes ? `<div style="font-size:11px;color:var(--teal);margin-top:1px;">${c.notes}</div>` : ''}
+          </div>
+        </div>`;
+      });
+    } else if (phase.num > 1) {
+      html += `<div style="font-size:13px;color:var(--muted);">No compounds loaded for this phase yet.</div>`;
+    }
+
+    html += `
+        <button onclick="adjustPhaseWithAI(${phase.num},'${phase.label}')" 
+          style="width:100%;margin-top:10px;padding:10px;background:transparent;border:1.5px solid ${phase.color};color:${phase.color};border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+          ✦ Adjust Phase ${phase.num} with AI
+        </button>
+      </div></div>`;
+  });
+
+  // Off month
+  html += `
+  <div style="background:var(--espresso);border-radius:var(--r);margin-bottom:12px;padding:14px 16px;">
+    <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">✈️ Holiday — 6–12 July 2026</div>
+    <div style="font-size:12px;color:var(--muted);">All compounds paused. Reta skips 11 July — resumes 18 July.</div>
+  </div>
+  <div style="background:var(--espresso);border-radius:var(--r);margin-bottom:16px;padding:14px 16px;">
+    <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">🔄 Off Month — August 2026</div>
+    <div style="font-size:12px;color:var(--muted);">BPC-157 + Retatrutide only. Everything else sealed and ready for Phase 2.</div>
+  </div>`;
+
+  // Order calendar
+  html += `<div style="font-size:14px;font-weight:700;color:var(--espresso);margin-bottom:10px;">📦 Order Calendar</div>`;
+
+  ORDER_SCHEDULE.forEach(order => {
+    const isUrgent = order.orderBy <= addDays(today(), 21);
+    html += `
+    <div style="background:var(--card);border-radius:var(--r);margin-bottom:10px;overflow:hidden;">
+      <div style="background:${isUrgent ? 'var(--terra)' : 'var(--brown)'};padding:12px 16px;cursor:pointer;" onclick="toggleSection('order-${order.label.replace(/ /g,'')}',this)">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#fff;">${order.label}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.7);">Order by ${fmtDate(order.orderBy)} · Arrives ~${fmtDate(order.expectedDelivery)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:16px;font-weight:700;color:#fff;">$${order.total}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.6);">AUD est.</div>
+          </div>
+        </div>
+        ${isUrgent ? '<div style="font-size:11px;font-weight:700;color:rgba(255,220,0,.9);margin-top:4px;">⚠ Order within 3 weeks</div>' : ''}
+      </div>
+      <div class="detail-collapsible${isUrgent ? ' open' : ''}" id="order-${order.label.replace(/ /g,'')}">
+        <div style="padding:12px 16px;">
+          ${order.compounds.map(c => `<div style="font-size:13px;color:var(--espresso);padding:4px 0;border-bottom:1px solid var(--card2);">• ${c}</div>`).join('')}
+        ${isUrgent ? `<button onclick="openOrderReview('${order.label}')"
+          style="width:100%;margin-top:10px;padding:10px;background:var(--terra);border:none;color:#fff;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+          ✦ Review Goals & Finalise Order with AI
+        </button>` : ''}
+        <div style="margin-top:10px;font-size:12px;color:var(--muted);">+ shipping · prices from Tong price list May 2026</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  // MOTS-c restart reminder
+  html += `
+  <div style="background:rgba(201,148,58,.1);border:1.5px solid var(--gold);border-radius:var(--r);padding:14px;margin-bottom:12px;">
+    <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px;">⏱ Key Dates to Track</div>
+    <div style="font-size:13px;color:var(--espresso);line-height:1.8;">
+      • MOTS-c Course 1 final injection: <strong>~Sun 14 Jun 2026</strong><br>
+      • MOTS-c Course 2 eligible: <strong>~Wed 14 Oct 2026</strong><br>
+      • RT10 runs out: <strong>~Fri 19 Jun 2026</strong> — RT30 needed<br>
+      • Phase 1 ends: <strong>~Sat 1 Aug 2026</strong><br>
+      • Epitalon Course 1: <strong>20 consecutive nights from ~15 Sep 2026</strong><br>
+      • Epitalon Course 2: <strong>~Mar 2027</strong> (6 months later)
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
 function showCompoundDetail(id) {
   const c = COMPOUNDS.find(x => x.id === id);
   if (!c) return;
@@ -1766,6 +2048,31 @@ function updateWizStockNote(id) {
 // ═══════════════════════════════════════════════
 let chatHistory = [];
 
+function adjustPhaseWithAI(phaseNum, phaseLabel) {
+  const phaseCompounds = activeStacks
+    .filter(s => phaseNum === 1 ? s.status === 'instock' : s.status === 'pipeline')
+    .map(s => COMPOUNDS.find(x => x.id === s.compoundId)?.name)
+    .filter(Boolean);
+
+  const context = `The user wants to review and potentially adjust ${phaseLabel}. Current compounds in this phase: ${phaseCompounds.join(', ') || 'none loaded yet'}. Their overall goals: ${selectedGoals.map(id => GOALS.find(g=>g.id===id)?.label).filter(Boolean).join(', ') || 'not set'}.`;
+
+  openAIChat();
+  setTimeout(() => sendChatMsg(`I want to review and adjust ${phaseLabel}. Here's what I'm currently planning: ${phaseCompounds.join(', ')}. What would you change, add or re-time based on my goals?`), 300);
+}
+
+function openOrderReview(orderLabel) {
+  const order = ORDER_SCHEDULE.find(o => o.label === orderLabel);
+  if (!order) return;
+  const daysLeft = Math.round((new Date(order.orderBy+'T12:00:00') - new Date(today()+'T12:00:00')) / 86400000);
+  const currentGoals = selectedGoals.map(id => GOALS.find(g=>g.id===id)?.label).filter(Boolean);
+
+  openAIChat();
+  setTimeout(() => {
+    const msg = `My ${orderLabel} is due in ${daysLeft} days. Current order list: ${order.compounds.join(', ')}. My goals are: ${currentGoals.join(', ') || 'not set yet'}. Before I place this order — are there any adjustments you'd recommend based on my goals and what I'm currently running? Also flag anything I should add or drop.`;
+    sendChatMsg(msg);
+  }, 300);
+}
+
 function openAIChat() {
   document.getElementById('chatModal').classList.add('open');
   const msgs = document.getElementById('chatMessages');
@@ -1862,7 +2169,19 @@ function renderHome() {
   document.getElementById('homeGreeting').textContent = greet;
   document.getElementById('homeDate').textContent = fmtDateLong(today());
 
-  // Today card
+  // Order deadline banner
+  const urgentOrder = ORDER_SCHEDULE.find(o => o.orderBy >= today() && addDays(today(), 21) >= o.orderBy);
+  if (urgentOrder) {
+    const daysLeft = Math.round((new Date(urgentOrder.orderBy+'T12:00:00') - new Date(today()+'T12:00:00')) / 86400000);
+    document.getElementById('homeDate').insertAdjacentHTML('afterend', `
+      <div onclick="openOrderReview('${urgentOrder.label}')" style="background:var(--terra);border-radius:12px;padding:12px 14px;margin:0 16px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;">
+        <div style="font-size:22px;">📦</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;color:#fff;">${urgentOrder.label} due in ${daysLeft} days</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);">Tap to review goals & finalise order with AI →</div>
+        </div>
+      </div>`);
+  }
   const doses = getTodayDoses(today());
   const prog = getDayProgress(today());
   document.getElementById('todayTitle').textContent = doses.length ? `${doses.length} doses today` : 'No doses today';
