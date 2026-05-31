@@ -261,7 +261,7 @@ html,body{height:100%;background:var(--cream);color:var(--espresso);font-family:
       <div class="nav-logo" id="navLogo">Peptide<span>.</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <div style="font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.3px;">v19</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.3px;">v20</div>
       <div class="nav-action" id="navAction"></div>
     </div>
   </div>
@@ -1526,49 +1526,42 @@ const ORDER_SCHEDULE = [
     label: 'Friday Order — This Week',
     orderBy: '2026-06-06',
     expectedDelivery: '2026-06-20',
-    compounds: [
-      'Retatrutide RT30 (RT30) ×1 — $290 ⚠ URGENT — RT10 runs out ~3 weeks',
-      'BPC-157 10mg (BC10) ×1 — $87',
-      'TB-500 10mg (BT10) ×1 — $228',
-      'GHK-Cu 50mg (CU50) ×1 — $54',
-      'NAD+ 500mg (NJ500) ×1 — $120',
-      'Epitalon 10mg (ET10) ×1 — $91',
-      'DSIP 5mg (DS5) ×1 — $62',
-      'BAC Water 10mL (WA10) ×1 — $10',
-      'Tesamorelin 5mg (TSM5) ×2 — $316 (check if already have)',
+    items: [
+      { compoundId:'retatrutide', vialMg:30, qty:1, note:'⚠ URGENT — RT10 runs out ~3 weeks' },
+      { compoundId:'tesamorelin', vialMg:10, qty:1, note:'Check if already have from previous delivery' },
+      { compoundId:'bpc157',      vialMg:10, qty:1 },
+      { compoundId:'tb500',       vialMg:10, qty:1 },
+      { compoundId:'ghkcu',       vialMg:50, qty:1 },
+      { compoundId:'nad',         vialMg:500,qty:1 },
+      { compoundId:'epitalon',    vialMg:10, qty:1 },
+      { compoundId:'dsip',        vialMg:5,  qty:1 },
+      { name:'BAC Water 10mL', cat:'WA10', vialMg:10, qty:1, pricePerBox:10 },
     ],
-    total: 942,
-    urgent: true,
   },
   {
     label: '10-Week Order — Mid August',
     orderBy: '2026-08-14',
     expectedDelivery: '2026-08-28',
-    compounds: [
-      'SLU-PP-322 5mg (322) ×1 — $165 (Phase 3 — DMSO needed locally)',
-      'Semax 5mg (XA5) ×1 — $67 (Phase 3 cognitive)',
-      'Oxytocin 2mg (OT2) ×1 — $62 (Phase 3 optional)',
-      'AOD-9604 5mg (FR5) ×1 — $158 (Phase 3 optional)',
-      '5-AMQ 5mg (5AM) ×1 — $67 (top-up for Course 2 if needed)',
-      'MOTS-c 10mg (MS10) ×1 — $100 (Course 2 Oct — check if already have)',
-      'BPC top-up (BC10) ×1 — $87 (if running low)',
-      'BAC Water 10mL (WA10) ×1 — $10',
+    items: [
+      { compoundId:'slu322',    vialMg:5,  qty:1, note:'Phase 3 — also source DMSO locally' },
+      { compoundId:'semax',     vialMg:5,  qty:1, note:'Phase 3 cognitive' },
+      { compoundId:'oxytocin',  vialMg:2,  qty:1, note:'Phase 3 optional' },
+      { compoundId:'aod9604',   vialMg:5,  qty:1, note:'Phase 3 optional' },
+      { compoundId:'5amq',      vialMg:5,  qty:1, note:'Top-up for Course 2 if needed' },
+      { compoundId:'motsc',     vialMg:10, qty:1, note:'Course 2 Oct — check if already have' },
+      { compoundId:'bpc157',    vialMg:10, qty:1, note:'Top-up if running low' },
+      { name:'BAC Water 10mL', cat:'WA10', vialMg:10, qty:1, pricePerBox:10 },
     ],
-    total: 716,
-    urgent: false,
   },
   {
     label: 'Phase 4 Order — Jan 2027',
     orderBy: '2027-01-15',
     expectedDelivery: '2027-01-29',
-    compounds: [
-      'Epitalon 10mg (ET10) ×1 — $91 (Course 2)',
-      'GHK-Cu 50mg (CU50) ×1 — $54 (Cycle 2)',
-      'NAD+ 500mg (NJ500) ×1 — $120 (Course 2)',
-      'Retatrutide top-up as needed',
+    items: [
+      { compoundId:'epitalon', vialMg:10, qty:1, note:'Course 2' },
+      { compoundId:'ghkcu',    vialMg:50, qty:1, note:'Cycle 2' },
+      { compoundId:'nad',      vialMg:500,qty:1, note:'Course 2' },
     ],
-    total: 265,
-    urgent: false,
   },
 ];
 
@@ -1686,30 +1679,24 @@ function renderRoadmap() {
 
   ORDER_SCHEDULE.forEach(order => {
     const isUrgent = order.orderBy <= addDays(today(), 21);
+    const orderTotal = (order.items||[]).reduce((s,i) => {
+        const p = i.pricePerBox || (PRICES[i.compoundId]?.find(p=>p.mg===i.vialMg)?.aud) || 0;
+        return s + (i.qty||1) * p;
+    }, 0);
     html += `
     <div style="background:var(--card);border-radius:var(--r);margin-bottom:10px;overflow:hidden;">
-      <div style="background:${isUrgent ? 'var(--terra)' : 'var(--brown)'};padding:12px 16px;cursor:pointer;" onclick="toggleSection('order-${order.label.replace(/ /g,'')}',this)">
+      <div style="background:${isUrgent ? 'var(--terra)' : 'var(--brown)'};padding:12px 16px;cursor:pointer;" onclick="showOrderPage('${order.label}')">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div style="font-size:14px;font-weight:700;color:#fff;">${order.label}</div>
             <div style="font-size:12px;color:rgba(255,255,255,.7);">Order by ${fmtDate(order.orderBy)} · Arrives ~${fmtDate(order.expectedDelivery)}</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:16px;font-weight:700;color:#fff;">$${order.total}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.6);">AUD est.</div>
+            <div style="font-size:16px;font-weight:700;color:#fff;">~$${orderTotal}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.6);">AUD est. · tap to edit</div>
           </div>
         </div>
-        ${isUrgent ? '<div style="font-size:11px;font-weight:700;color:rgba(255,220,0,.9);margin-top:4px;">⚠ Order within 3 weeks</div>' : ''}
-      </div>
-      <div class="detail-collapsible${isUrgent ? ' open' : ''}" id="order-${order.label.replace(/ /g,'')}">
-        <div style="padding:12px 16px;">
-          ${order.compounds.map(c => `<div style="font-size:13px;color:var(--espresso);padding:4px 0;border-bottom:1px solid var(--card2);">• ${c}</div>`).join('')}
-        ${isUrgent ? `<button onclick="openOrderReview('${order.label}')"
-          style="width:100%;margin-top:10px;padding:10px;background:var(--terra);border:none;color:#fff;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
-          ✦ Review Goals & Finalise Order with AI
-        </button>` : ''}
-        <div style="margin-top:10px;font-size:12px;color:var(--muted);">+ shipping · prices from Tong price list May 2026</div>
-        </div>
+        ${isUrgent ? '<div style="font-size:11px;font-weight:700;color:rgba(255,220,0,.9);margin-top:4px;">⚠ Tap to view & edit order</div>' : ''}
       </div>
     </div>`;
   });
@@ -2095,118 +2082,9 @@ function updateWizStockNote(id) {
 // ═══════════════════════════════════════════════
 let chatHistory = [];
 
-function saveApiKey() {
-  const key = document.getElementById('apiKeyInput')?.value?.trim();
-  if (key) {
-    localStorage.setItem('anthropicKey', key);
-    alert('✅ API key saved. AI chat is now enabled.');
-  } else {
-    localStorage.removeItem('anthropicKey');
-    alert('API key cleared.');
-  }
-}
-
-function getApiKey() {
-  return localStorage.getItem('anthropicKey') || '';
-}
-
-function showOrderPage(orderLabel) {
-  const order = ORDER_SCHEDULE.find(o => o.label === orderLabel) || ORDER_SCHEDULE[0];
-  const daysLeft = Math.round((new Date(order.orderBy+'T12:00:00') - new Date(today()+'T12:00:00')) / 86400000);
-
-  // Build editable order items from compounds with Tong data
-  const orderItems = order.compounds.map((item, i) => {
-    // Parse "Name (CatNo) ×qty — $price" format
-    const match = item.match(/(.+?)\s*\((\w+)\)\s*[×x](\d+)\s*—\s*\$(\d+)/);
-    if (!match) return { raw: item, idx: i };
-    return { name: match[1].trim(), cat: match[2], qty: parseInt(match[3]), unitPrice: parseInt(match[4]), idx: i };
-  });
-
-  let html = `
-    <div style="background:var(--espresso);padding:16px;margin-bottom:0;">
-      <div style="font-size:18px;font-weight:700;color:#fff;">${order.label}</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px;">Order by ${fmtDate(order.orderBy)} · Arrives ~${fmtDate(order.expectedDelivery)}</div>
-      ${daysLeft <= 21 ? `<div style="font-size:12px;font-weight:700;color:var(--terra2);margin-top:4px;">⚠ ${daysLeft} days until order deadline</div>` : ''}
-    </div>
-
-    <div style="padding:16px;">
-      <table style="width:100%;border-collapse:collapse;">
-        <tr style="border-bottom:2px solid var(--card2);">
-          <th style="text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding-bottom:8px;">Item</th>
-          <th style="text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding-bottom:8px;">Qty</th>
-          <th style="text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding-bottom:8px;">AUD</th>
-        </tr>`;
-
-  let total = 0;
-  orderItems.forEach(item => {
-    if (!item.cat) {
-      html += `<tr><td colspan="3" style="padding:8px 0;font-size:13px;color:var(--muted);border-bottom:1px solid var(--card2);">${item.raw}</td></tr>`;
-      return;
-    }
-    const lineTotal = item.qty * item.unitPrice;
-    total += lineTotal;
-    html += `
-      <tr style="border-bottom:1px solid var(--card2);" id="orderrow-${item.idx}">
-        <td style="padding:10px 0;">
-          <div style="font-size:14px;font-weight:700;color:var(--espresso);">${item.name}</div>
-          <div style="font-size:11px;color:var(--muted);">${item.cat} · $${item.unitPrice}/box</div>
-        </td>
-        <td style="text-align:center;padding:10px 4px;">
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-            <button onclick="changeQty(${item.idx},-1)" style="width:28px;height:28px;border-radius:50%;background:var(--card2);border:none;font-size:16px;cursor:pointer;font-family:inherit;">−</button>
-            <span id="qty-${item.idx}" style="font-size:15px;font-weight:700;min-width:20px;text-align:center;">${item.qty}</span>
-            <button onclick="changeQty(${item.idx},1)" style="width:28px;height:28px;border-radius:50%;background:var(--card2);border:none;font-size:16px;cursor:pointer;font-family:inherit;">+</button>
-          </div>
-        </td>
-        <td style="text-align:right;padding:10px 0;">
-          <span id="linetotal-${item.idx}" style="font-size:14px;font-weight:700;color:var(--espresso);">$${lineTotal}</span>
-        </td>
-      </tr>`;
-  });
-
-  html += `
-        <tr style="border-top:2px solid var(--espresso);">
-          <td style="padding:12px 0;font-size:15px;font-weight:700;color:var(--espresso);">Total</td>
-          <td></td>
-          <td style="text-align:right;padding:12px 0;font-size:18px;font-weight:700;color:var(--terra);" id="orderTotal">$${total} AUD</td>
-        </tr>
-      </table>
-
-      <div style="font-size:12px;color:var(--muted);margin-top:6px;">+ shipping. Prices from Tong list May 2026.</div>
-
-      <button onclick="openOrderReview('${order.label}')" style="width:100%;padding:14px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;">
-        ✦ Review with AI before ordering
-      </button>
-      <div style="margin-top:10px;background:var(--card);border-radius:10px;padding:12px;font-size:13px;color:var(--muted);">
-        🌐 Place order at <strong style="color:var(--espresso);">progen.com.au</strong> or your Tong supplier. Reference cat numbers above.
-      </div>
-    </div>`;
-
-  document.getElementById('orderPageContent').innerHTML = html;
-  // Store order items for qty changes
-  window._orderItems = orderItems;
-  window._orderUnitPrices = orderItems.reduce((obj, i) => { if (i.cat) obj[i.idx] = i.unitPrice; return obj; }, {});
-  showScreen('screenOrder');
-}
-
-function changeQty(idx, delta) {
-  const el = document.getElementById(`qty-${idx}`);
-  if (!el) return;
-  let qty = parseInt(el.textContent) + delta;
-  if (qty < 0) qty = 0;
-  el.textContent = qty;
-  const price = window._orderUnitPrices[idx] || 0;
-  const lineEl = document.getElementById(`linetotal-${idx}`);
-  if (lineEl) lineEl.textContent = `$${qty * price}`;
-  // Recalculate total
-  let total = 0;
-  Object.keys(window._orderUnitPrices).forEach(i => {
-    const q = parseInt(document.getElementById(`qty-${i}`)?.textContent || 0);
-    total += q * window._orderUnitPrices[i];
-  });
-  const totalEl = document.getElementById('orderTotal');
-  if (totalEl) totalEl.textContent = `$${total} AUD`;
-}
+// Order cart state
+let orderCart = [];
+let currentOrderLabel = '';
 
 function adjustPhaseWithAI(phaseNum, phaseLabel) {
   const phaseCompounds = activeStacks
@@ -2228,7 +2106,12 @@ function openOrderReview(orderLabel) {
 
   openAIChat();
   setTimeout(() => {
-    const msg = `My ${orderLabel} is due in ${daysLeft} days. Current order list: ${order.compounds.join(', ')}. My goals are: ${currentGoals.join(', ') || 'not set yet'}. Before I place this order — are there any adjustments you'd recommend based on my goals and what I'm currently running? Also flag anything I should add or drop.`;
+    const itemList = order.items ? order.items.map(i => {
+      const c = COMPOUNDS.find(x => x.id === i.compoundId);
+      const p = PRICES[i.compoundId]?.find(p => p.mg === i.vialMg);
+      return `${c?.name || i.name} ${i.vialMg}mg (${p?.cat||'—'}) ×${i.qty||1} $${(p?.aud||0)*(i.qty||1)}`;
+    }).join(', ') : order.compounds?.join(', ') || '';
+    const msg = `My ${orderLabel} is due in ${daysLeft} days. Current order list: ${itemList}. My goals are: ${currentGoals.join(', ') || 'not set yet'}. Before I place this order — are there any adjustments you'd recommend based on my goals and what I'm currently running? Also flag anything I should add or drop.`;
     sendChatMsg(msg);
   }, 300);
 }
