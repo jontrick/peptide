@@ -480,9 +480,57 @@ html,body{height:100%;background:var(--cream);color:var(--espresso);font-family:
     <div class="bnav-icon">🔬</div>
     <div class="bnav-label">Recon</div>
   </div>
+  <div class="bnav-item" onclick="navTo('settings',this)">
+    <div class="bnav-icon">⚙️</div>
+    <div class="bnav-label">Settings</div>
+  </div>
 </div>
 
-<!-- RECON MODAL -->
+<!-- ════════════════════════════════════════
+     SCREEN: SETTINGS
+════════════════════════════════════════ -->
+<div class="screen" id="screenSettings">
+  <div style="padding:20px 16px 8px;">
+    <div style="font-size:22px;font-weight:700;color:var(--espresso);margin-bottom:16px;">Settings</div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px;">Protocol</div>
+
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;color:var(--espresso);margin-bottom:4px;">Import Protocol JSON</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Paste a protocol JSON string to load your full stack — active compounds, pipeline, stock and dates all at once.</div>
+      <textarea id="importJson" rows="5" placeholder='[{"compoundId":"bpc157","dose":0.5,...}]'
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--card2);border-radius:8px;font-size:12px;font-family:monospace;color:var(--espresso);background:#fff;outline:none;resize:vertical;"></textarea>
+      <button onclick="importProtocol()" style="width:100%;padding:13px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;font-family:inherit;">Load Protocol</button>
+    </div>
+
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;color:var(--espresso);margin-bottom:4px;">Export Current Stack</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Copy your current stack to share or back up.</div>
+      <button onclick="exportProtocol()" style="width:100%;padding:13px;background:var(--espresso);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;">Copy to Clipboard</button>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:16px 0 8px;">Data</div>
+
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;color:var(--espresso);margin-bottom:4px;">Reset All Checks</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Clear all logged doses. Stack and config kept.</div>
+      <button onclick="resetChecks()" style="width:100%;padding:13px;background:transparent;color:var(--red);border:1.5px solid var(--red);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;">Reset Dose Log</button>
+    </div>
+
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;color:var(--espresso);margin-bottom:4px;">Clear Everything</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Remove all stacks, configs and logs. Fresh start.</div>
+      <button onclick="clearAll()" style="width:100%;padding:13px;background:var(--red);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;">Factory Reset</button>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:16px;line-height:1.6;">
+      ⚠ Research chemicals only. Not medical advice.<br>Consult a healthcare professional.
+    </div>
+  </div>
+  <div class="spacer"></div>
+</div>
+
+
 <div class="modal-bg" id="reconModal" onclick="closeModal(event)">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -1190,10 +1238,10 @@ function goBack() {
 function navTo(name, el) {
   document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  const map = {home:'screenHome', today:'screenToday', recon:'screenRecon'};
+  const map = {home:'screenHome', today:'screenToday', recon:'screenRecon', settings:'screenSettings'};
   screenHistory = [map[name]];
   showScreen(map[name]);
-  if (name === 'today') renderTodayScreen();
+  if (name === 'today') { viewDate = today(); renderTodayScreen(); }
   if (name === 'recon') renderReconScreen();
   if (name === 'home') renderHome();
 }
@@ -1902,6 +1950,49 @@ function renderCompoundList() {
     footer.classList.remove('show');
     document.getElementById('clearAllBtn').style.display = 'none';
   }
+}
+
+function importProtocol() {
+  const raw = document.getElementById('importJson')?.value?.trim();
+  if (!raw) return alert('Paste a protocol JSON first.');
+  try {
+    const stack = JSON.parse(raw);
+    if (!Array.isArray(stack)) throw new Error('Must be an array');
+    activeStacks = stack;
+    localStorage.setItem('activeStacks', JSON.stringify(activeStacks));
+    document.getElementById('importJson').value = '';
+    renderHome();
+    alert(`✅ Loaded ${stack.length} compounds. Tap Today to see your doses.`);
+  } catch(e) {
+    alert('Invalid JSON — check the format and try again.\n\n' + e.message);
+  }
+}
+
+function exportProtocol() {
+  const json = JSON.stringify(activeStacks, null, 2);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(json).then(() => alert('✅ Copied to clipboard.'));
+  } else {
+    document.getElementById('importJson').value = json;
+    alert('Copied to the text area above — select all and copy manually.');
+  }
+}
+
+function resetChecks() {
+  if (!confirm('Clear all logged doses? Stack is kept.')) return;
+  Object.keys(localStorage).filter(k => k.startsWith('checked_')).forEach(k => localStorage.removeItem(k));
+  renderTodayScreen();
+  alert('Done — dose log cleared.');
+}
+
+function clearAll() {
+  if (!confirm('Delete EVERYTHING — all stacks, configs and logs. This cannot be undone.')) return;
+  localStorage.clear();
+  activeStacks = [];
+  selectedCompounds = [];
+  stackConfigs = {};
+  renderHome();
+  alert('Reset complete.');
 }
 
 function clearAllSelected() {
