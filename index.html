@@ -2994,6 +2994,10 @@ renderReconScreen();
 viewDate = today();
 
 if ('serviceWorker' in navigator) {
+  // Unregister any competing service workers (Phoenix app etc)
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => { if (!r.scope.includes('/peptide')) r.unregister(); });
+  });
   navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 </script>
