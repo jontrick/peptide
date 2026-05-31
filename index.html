@@ -509,9 +509,24 @@ html,body{height:100%;background:var(--cream);color:var(--espresso);font-family:
 </div>
 
 
+<!-- ORDER SCREEN -->
+<div class="screen" id="screenOrder">
+  <div id="orderPageContent"></div>
+  <div class="spacer"></div>
+</div>
+
 <div class="screen" id="screenSettings">
   <div style="padding:20px 16px 8px;">
     <div style="font-size:22px;font-weight:700;color:var(--espresso);margin-bottom:16px;">Settings</div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px;">AI Assistant</div>
+    <div style="background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;color:var(--espresso);margin-bottom:4px;">Anthropic API Key</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Required for the AI chat and phase adjustment features. Get yours at console.anthropic.com. Stored only on this device.</div>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." value="${localStorage.getItem('anthropicKey')||''}"
+        style="width:100%;padding:11px 14px;border:1.5px solid var(--card2);border-radius:10px;font-size:14px;font-family:monospace;color:var(--espresso);background:#fff;outline:none;">
+      <button onclick="saveApiKey()" style="width:100%;padding:12px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;font-family:inherit;">Save API Key</button>
+    </div>
 
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px;">Protocol</div>
 
@@ -1508,27 +1523,51 @@ const ROADMAP_PLAN = [
 // Order schedule
 const ORDER_SCHEDULE = [
   {
-    label: 'Phase 2 Order',
-    orderBy: '2026-06-14',
-    expectedDelivery: '2026-06-28',
-    compounds: ['BPC-157 10mg (BC10) ×10 — $87','TB-500 10mg (BT10) ×10 — $228','GHK-Cu 50mg (CU50) ×10 — $54','NAD+ 500mg (NJ500) ×10 — $120','Epitalon 10mg (ET10) ×10 — $91','Reta RT30 (RT30) ×10 — $290','Semax 5mg (XA5) ×10 — $67','DSIP 5mg (DS5) ×10 — $62','BAC Water 10mL (WA10) ×10 — $10'],
-    total: 1009,
+    label: 'Friday Order — This Week',
+    orderBy: '2026-06-06',
+    expectedDelivery: '2026-06-20',
+    compounds: [
+      'Retatrutide RT30 (RT30) ×1 — $290 ⚠ URGENT — RT10 runs out ~3 weeks',
+      'BPC-157 10mg (BC10) ×1 — $87',
+      'TB-500 10mg (BT10) ×1 — $228',
+      'GHK-Cu 50mg (CU50) ×1 — $54',
+      'NAD+ 500mg (NJ500) ×1 — $120',
+      'Epitalon 10mg (ET10) ×1 — $91',
+      'DSIP 5mg (DS5) ×1 — $62',
+      'BAC Water 10mL (WA10) ×1 — $10',
+      'Tesamorelin 5mg (TSM5) ×2 — $316 (check if already have)',
+    ],
+    total: 942,
     urgent: true,
   },
   {
-    label: 'Phase 3 Order',
-    orderBy: '2026-10-01',
-    expectedDelivery: '2026-10-15',
-    compounds: ['SLU-PP-322 5mg (322) ×10 — $165','Oxytocin 2mg (OT2) ×10 — $62','AOD-9604 5mg (FR5) ×10 — $158','DMSO (source locally — pharmacy)','BPC top-up if needed','TB-500 top-up if needed'],
-    total: 385,
+    label: '10-Week Order — Mid August',
+    orderBy: '2026-08-14',
+    expectedDelivery: '2026-08-28',
+    compounds: [
+      'SLU-PP-322 5mg (322) ×1 — $165 (Phase 3 — DMSO needed locally)',
+      'Semax 5mg (XA5) ×1 — $67 (Phase 3 cognitive)',
+      'Oxytocin 2mg (OT2) ×1 — $62 (Phase 3 optional)',
+      'AOD-9604 5mg (FR5) ×1 — $158 (Phase 3 optional)',
+      '5-AMQ 5mg (5AM) ×1 — $67 (top-up for Course 2 if needed)',
+      'MOTS-c 10mg (MS10) ×1 — $100 (Course 2 Oct — check if already have)',
+      'BPC top-up (BC10) ×1 — $87 (if running low)',
+      'BAC Water 10mL (WA10) ×1 — $10',
+    ],
+    total: 716,
     urgent: false,
   },
   {
-    label: 'Phase 4 Order',
+    label: 'Phase 4 Order — Jan 2027',
     orderBy: '2027-01-15',
     expectedDelivery: '2027-01-29',
-    compounds: ['Epitalon 10mg (ET10) ×10 — $91 (Course 2)','GHK-Cu 50mg (CU50) ×10 — $54','NAD+ top-up as needed','Any other reorders'],
-    total: 145,
+    compounds: [
+      'Epitalon 10mg (ET10) ×1 — $91 (Course 2)',
+      'GHK-Cu 50mg (CU50) ×1 — $54 (Cycle 2)',
+      'NAD+ 500mg (NJ500) ×1 — $120 (Course 2)',
+      'Retatrutide top-up as needed',
+    ],
+    total: 265,
     urgent: false,
   },
 ];
@@ -1678,14 +1717,19 @@ function renderRoadmap() {
   // MOTS-c restart reminder
   html += `
   <div style="background:rgba(201,148,58,.1);border:1.5px solid var(--gold);border-radius:var(--r);padding:14px;margin-bottom:12px;">
-    <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px;">⏱ Key Dates to Track</div>
-    <div style="font-size:13px;color:var(--espresso);line-height:1.8;">
-      • MOTS-c Course 1 final injection: <strong>~Sun 14 Jun 2026</strong><br>
-      • MOTS-c Course 2 eligible: <strong>~Wed 14 Oct 2026</strong><br>
-      • RT10 runs out: <strong>~Fri 19 Jun 2026</strong> — RT30 needed<br>
-      • Phase 1 ends: <strong>~Sat 1 Aug 2026</strong><br>
-      • Epitalon Course 1: <strong>20 consecutive nights from ~15 Sep 2026</strong><br>
-      • Epitalon Course 2: <strong>~Mar 2027</strong> (6 months later)
+    <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px;">⏱ Key Dates</div>
+    <div style="font-size:13px;color:var(--espresso);line-height:1.9;">
+      • 5-AMQ Course 1 starts: <strong>Mon 1 Jun 2026</strong> (concurrent with MOTS-c)<br>
+      • MOTS-c Course 1 final injection: <strong>Sun 14 Jun 2026</strong><br>
+      • RT10 Reta runs out: <strong>~Fri 21 Jun 2026</strong> — RT30 must arrive before<br>
+      • 5-AMQ Course 1 ends: <strong>~Mon 27 Jul 2026</strong><br>
+      • Off month: <strong>August 2026</strong> (BPC + Reta only)<br>
+      • Phase 2 starts: <strong>Tue 1 Sep 2026</strong> — Tesamorelin, NAD+, GHK-Cu, TB-500, DSIP<br>
+      • Epitalon course: <strong>20 nights from ~15 Sep 2026</strong><br>
+      • MOTS-c Course 2 eligible: <strong>~Tue 14 Oct 2026</strong><br>
+      • Phase 3 starts: <strong>~Nov 2026</strong> — 5-AMQ C2, Semax, SLU-PP-322<br>
+      • NAD+ Course 2: <strong>Jan 2027</strong><br>
+      • Epitalon Course 2: <strong>~Mar 2027</strong> (6 months after Course 1)
     </div>
   </div>`;
 
@@ -2051,6 +2095,119 @@ function updateWizStockNote(id) {
 // ═══════════════════════════════════════════════
 let chatHistory = [];
 
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput')?.value?.trim();
+  if (key) {
+    localStorage.setItem('anthropicKey', key);
+    alert('✅ API key saved. AI chat is now enabled.');
+  } else {
+    localStorage.removeItem('anthropicKey');
+    alert('API key cleared.');
+  }
+}
+
+function getApiKey() {
+  return localStorage.getItem('anthropicKey') || '';
+}
+
+function showOrderPage(orderLabel) {
+  const order = ORDER_SCHEDULE.find(o => o.label === orderLabel) || ORDER_SCHEDULE[0];
+  const daysLeft = Math.round((new Date(order.orderBy+'T12:00:00') - new Date(today()+'T12:00:00')) / 86400000);
+
+  // Build editable order items from compounds with Tong data
+  const orderItems = order.compounds.map((item, i) => {
+    // Parse "Name (CatNo) ×qty — $price" format
+    const match = item.match(/(.+?)\s*\((\w+)\)\s*[×x](\d+)\s*—\s*\$(\d+)/);
+    if (!match) return { raw: item, idx: i };
+    return { name: match[1].trim(), cat: match[2], qty: parseInt(match[3]), unitPrice: parseInt(match[4]), idx: i };
+  });
+
+  let html = `
+    <div style="background:var(--espresso);padding:16px;margin-bottom:0;">
+      <div style="font-size:18px;font-weight:700;color:#fff;">${order.label}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;">Order by ${fmtDate(order.orderBy)} · Arrives ~${fmtDate(order.expectedDelivery)}</div>
+      ${daysLeft <= 21 ? `<div style="font-size:12px;font-weight:700;color:var(--terra2);margin-top:4px;">⚠ ${daysLeft} days until order deadline</div>` : ''}
+    </div>
+
+    <div style="padding:16px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr style="border-bottom:2px solid var(--card2);">
+          <th style="text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding-bottom:8px;">Item</th>
+          <th style="text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding-bottom:8px;">Qty</th>
+          <th style="text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding-bottom:8px;">AUD</th>
+        </tr>`;
+
+  let total = 0;
+  orderItems.forEach(item => {
+    if (!item.cat) {
+      html += `<tr><td colspan="3" style="padding:8px 0;font-size:13px;color:var(--muted);border-bottom:1px solid var(--card2);">${item.raw}</td></tr>`;
+      return;
+    }
+    const lineTotal = item.qty * item.unitPrice;
+    total += lineTotal;
+    html += `
+      <tr style="border-bottom:1px solid var(--card2);" id="orderrow-${item.idx}">
+        <td style="padding:10px 0;">
+          <div style="font-size:14px;font-weight:700;color:var(--espresso);">${item.name}</div>
+          <div style="font-size:11px;color:var(--muted);">${item.cat} · $${item.unitPrice}/box</div>
+        </td>
+        <td style="text-align:center;padding:10px 4px;">
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <button onclick="changeQty(${item.idx},-1)" style="width:28px;height:28px;border-radius:50%;background:var(--card2);border:none;font-size:16px;cursor:pointer;font-family:inherit;">−</button>
+            <span id="qty-${item.idx}" style="font-size:15px;font-weight:700;min-width:20px;text-align:center;">${item.qty}</span>
+            <button onclick="changeQty(${item.idx},1)" style="width:28px;height:28px;border-radius:50%;background:var(--card2);border:none;font-size:16px;cursor:pointer;font-family:inherit;">+</button>
+          </div>
+        </td>
+        <td style="text-align:right;padding:10px 0;">
+          <span id="linetotal-${item.idx}" style="font-size:14px;font-weight:700;color:var(--espresso);">$${lineTotal}</span>
+        </td>
+      </tr>`;
+  });
+
+  html += `
+        <tr style="border-top:2px solid var(--espresso);">
+          <td style="padding:12px 0;font-size:15px;font-weight:700;color:var(--espresso);">Total</td>
+          <td></td>
+          <td style="text-align:right;padding:12px 0;font-size:18px;font-weight:700;color:var(--terra);" id="orderTotal">$${total} AUD</td>
+        </tr>
+      </table>
+
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">+ shipping. Prices from Tong list May 2026.</div>
+
+      <button onclick="openOrderReview('${order.label}')" style="width:100%;padding:14px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;">
+        ✦ Review with AI before ordering
+      </button>
+      <div style="margin-top:10px;background:var(--card);border-radius:10px;padding:12px;font-size:13px;color:var(--muted);">
+        🌐 Place order at <strong style="color:var(--espresso);">progen.com.au</strong> or your Tong supplier. Reference cat numbers above.
+      </div>
+    </div>`;
+
+  document.getElementById('orderPageContent').innerHTML = html;
+  // Store order items for qty changes
+  window._orderItems = orderItems;
+  window._orderUnitPrices = orderItems.reduce((obj, i) => { if (i.cat) obj[i.idx] = i.unitPrice; return obj; }, {});
+  showScreen('screenOrder');
+}
+
+function changeQty(idx, delta) {
+  const el = document.getElementById(`qty-${idx}`);
+  if (!el) return;
+  let qty = parseInt(el.textContent) + delta;
+  if (qty < 0) qty = 0;
+  el.textContent = qty;
+  const price = window._orderUnitPrices[idx] || 0;
+  const lineEl = document.getElementById(`linetotal-${idx}`);
+  if (lineEl) lineEl.textContent = `$${qty * price}`;
+  // Recalculate total
+  let total = 0;
+  Object.keys(window._orderUnitPrices).forEach(i => {
+    const q = parseInt(document.getElementById(`qty-${i}`)?.textContent || 0);
+    total += q * window._orderUnitPrices[i];
+  });
+  const totalEl = document.getElementById('orderTotal');
+  if (totalEl) totalEl.textContent = `$${total} AUD`;
+}
+
 function adjustPhaseWithAI(phaseNum, phaseLabel) {
   const phaseCompounds = activeStacks
     .filter(s => phaseNum === 1 ? s.status === 'instock' : s.status === 'pipeline')
@@ -2142,10 +2299,23 @@ IN BUILDER: ${selected.join(', ') || 'None'}
 
 Be specific to their stack. Keep responses concise (3-5 sentences max unless asking for detail). Use **bold** for compound names. Give actionable recommendations.`;
 
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    document.getElementById(thinkId)?.remove();
+    msgs.innerHTML += `<div class="chat-msg ai" style="border:1.5px solid var(--terra);">No API key set — go to ⚙️ Settings to add your Anthropic API key.</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    return;
+  }
+
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 400,
@@ -2174,14 +2344,16 @@ function renderHome() {
 
   // Order deadline banner
   const urgentOrder = ORDER_SCHEDULE.find(o => o.orderBy >= today() && addDays(today(), 21) >= o.orderBy);
+  // Remove any existing banner first to prevent duplicates
+  document.getElementById('orderBanner')?.remove();
   if (urgentOrder) {
     const daysLeft = Math.round((new Date(urgentOrder.orderBy+'T12:00:00') - new Date(today()+'T12:00:00')) / 86400000);
     document.getElementById('homeDate').insertAdjacentHTML('afterend', `
-      <div onclick="openOrderReview('${urgentOrder.label}')" style="background:var(--terra);border-radius:12px;padding:12px 14px;margin:0 16px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;">
+      <div id="orderBanner" onclick="showOrderPage('${urgentOrder.label}')" style="background:var(--terra);border-radius:12px;padding:12px 14px;margin:0 16px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;">
         <div style="font-size:22px;">📦</div>
         <div style="flex:1;">
           <div style="font-size:13px;font-weight:700;color:#fff;">${urgentOrder.label} due in ${daysLeft} days</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.7);">Tap to review goals & finalise order with AI →</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.7);">Tap to view & edit order →</div>
         </div>
       </div>`);
   }
@@ -2201,14 +2373,15 @@ function renderHome() {
   el.innerHTML = activeStacks.map(stack => {
     const c = COMPOUNDS.find(x => x.id === stack.compoundId);
     if (!c) return '';
-    const prog = getDayProgress(today(), stack.compoundId);
-    return `<div class="stack-card" onclick="showScreen('screenToday');renderTodayScreen()">
+    const statusLabel = stack.status === 'pipeline' ? 'Pipeline' : stack.status === 'onorder' ? 'On Order' : 'Active';
+    const statusColor = stack.status === 'pipeline' ? 'var(--gold)' : stack.status === 'onorder' ? 'var(--teal)' : 'var(--green)';
+    return `<div class="stack-card" onclick="showCompoundDetail('${stack.compoundId}')">
       <div class="compound-emoji">${c.emoji}</div>
       <div class="stack-info">
         <div class="stack-name">${c.name}</div>
         <div class="stack-sub">${stack.dose}${c.doseUnit} · ${c.freq}</div>
       </div>
-      <div class="stack-status status-active">Active</div>
+      <div class="stack-status" style="background:${statusColor}22;color:${statusColor};">${statusLabel}</div>
     </div>`;
   }).join('');
 }
