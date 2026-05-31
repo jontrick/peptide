@@ -1222,7 +1222,7 @@ function today() { return dateStr(new Date()); }
 function showScreen(id, title) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const isRoot = ['screenHome','screenToday','screenRecon'].includes(id);
+  const isRoot = ['screenHome','screenToday','screenRecon','screenSettings'].includes(id);
   document.getElementById('navBack').classList.toggle('show', !isRoot);
   document.getElementById('mainNav').style.display = isRoot ? 'flex' : 'none';
   document.getElementById('navAction').textContent = '';
