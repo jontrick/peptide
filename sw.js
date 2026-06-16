@@ -1,4 +1,4 @@
-const CACHE = 'peptide-v22';
+const CACHE = 'peptide-v23';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
