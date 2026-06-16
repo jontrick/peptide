@@ -261,7 +261,7 @@ html,body{height:100%;background:var(--cream);color:var(--espresso);font-family:
       <div class="nav-logo" id="navLogo">Peptide<span>.</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <div style="font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.3px;">v21</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.3px;">v22</div>
       <div class="nav-action" id="navAction"></div>
     </div>
   </div>
@@ -3334,11 +3334,17 @@ function getTodayDoses(ds) {
       if (timing.includes('fasted am') || timing.includes('morning')) section = 'morning';
       else if (timing.includes('bed') || timing.includes('evening') || timing.includes('pm')) section = 'evening';
 
+      // Blends are dosed directly in syringe units; everything else is dosed in
+      // mg and converted: units = mg / (mg/mL) * 100. Without this branch the
+      // unit-dosed blends get re-converted and show inflated unit counts.
+      const isUnitDose = c.doseUnit === 'units';
+      const units = (isUnitDose ? stack.dose : stack.dose / (stack.vialMg / stack.waterMl) * 100).toFixed(1);
+
       doses.push({
         id: stack.compoundId,
         name: c.name,
-        dose: `${stack.dose}${c.doseUnit}`,
-        detail: `${(stack.dose / (stack.vialMg / stack.waterMl) * 100).toFixed(1)} units · ${c.freq}`,
+        dose: isUnitDose ? `${stack.dose} units` : `${stack.dose}${c.doseUnit}`,
+        detail: isUnitDose ? c.freq : `${units} units · ${c.freq}`,
         timing: c.timing,
         section,
         emoji: c.emoji,
