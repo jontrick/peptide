@@ -261,7 +261,7 @@ html,body{height:100%;background:var(--cream);color:var(--espresso);font-family:
       <div class="nav-logo" id="navLogo">Peptide<span>.</span></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <div style="font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.3px;">v20</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.3px;">v21</div>
       <div class="nav-action" id="navAction"></div>
     </div>
   </div>
@@ -2492,7 +2492,25 @@ function importProtocol() {
   try {
     const stack = JSON.parse(raw);
     if (!Array.isArray(stack)) throw new Error('Must be an array');
-    activeStacks = stack;
+    // Normalise imported stacks to the same shape activateProgramme() produces,
+    // so the Today scheduler has every field it needs (startDate, cycleWeeks,
+    // status, continuous, etc.). Imported JSON often omits these, which left
+    // Today empty even though My Stacks rendered fine.
+    activeStacks = stack.map(s => {
+      const c = COMPOUNDS.find(x => x.id === s.compoundId);
+      if (!c) return s; // unknown compound — leave as-is (won't render anywhere)
+      return {
+        ...s,
+        dose:       s.dose != null ? s.dose : c.dose,
+        startDate:  s.startDate || today(),
+        cycleWeeks: s.cycleWeeks != null ? s.cycleWeeks : (c.cycleWeeks || 8),
+        offWeeks:   s.offWeeks != null ? s.offWeeks : (c.offWeeks || 4),
+        vialMg:     s.vialMg || c.vials[0].mg,
+        waterMl:    s.waterMl || c.defaultWater,
+        status:     s.status || 'instock',
+        continuous: s.continuous != null ? s.continuous : !!c.continuousOk,
+      };
+    });
     localStorage.setItem('activeStacks', JSON.stringify(activeStacks));
     document.getElementById('importJson').value = '';
     renderHome();
@@ -3269,8 +3287,13 @@ function getTodayDoses(ds) {
     // Only show compounds that are in stock
     if (stack.status && stack.status !== 'instock') return;
     const startD = new Date(stack.startDate + 'T12:00:00');
-    const endD = new Date(addDays(stack.startDate, stack.cycleWeeks * 7) + 'T12:00:00');
-    if (d < startD || d >= endD) return;
+    if (d < startD) return;
+    // Continuous compounds (e.g. BPC-157) run indefinitely — only cycled
+    // compounds expire at the end of their on-cycle window.
+    if (!stack.continuous) {
+      const endD = new Date(addDays(stack.startDate, stack.cycleWeeks * 7) + 'T12:00:00');
+      if (d >= endD) return;
+    }
 
     const dayNum = Math.round((d - startD) / 86400000);
     const freq = c.freq.toLowerCase();
@@ -3443,9 +3466,11 @@ function openReconModal(compoundId) {
   document.getElementById('modalTitle').textContent = c.name;
   document.getElementById('modalSub').textContent = c.aka;
 
-  const defVial = c.vials[0].mg;
-  const defWater = c.defaultWater;
-  const defDose = c.dose;
+  // Pre-fill from the user's saved recon settings if this compound is in their stack
+  const stack = activeStacks.find(s => s.compoundId === compoundId);
+  const defVial = stack?.vialMg || c.vials[0].mg;
+  const defWater = stack?.waterMl || c.defaultWater;
+  const defDose = stack?.dose || c.dose;
   const conc = defVial / defWater;
   const units = (defDose / conc * 100).toFixed(1);
 
@@ -3472,7 +3497,7 @@ function openReconModal(compoundId) {
     <div style="margin-bottom:12px;">
       <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:6px;">Vial Size (mg)</label>
       <select id="m-vial" onchange="updateReconModal('${compoundId}')" style="width:100%;padding:11px 14px;border:1.5px solid var(--card2);border-radius:10px;font-size:15px;color:var(--espresso);background:#fff;outline:none;font-family:inherit;-webkit-appearance:none;">
-        ${c.vials.map(v => `<option value="${v.mg}">${v.label}</option>`).join('')}
+        ${c.vials.map(v => `<option value="${v.mg}"${v.mg === defVial ? ' selected' : ''}>${v.label}</option>`).join('')}
       </select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
@@ -3504,6 +3529,18 @@ function updateReconModal(compoundId) {
   const conc = vial / water;
   const units = (dose / conc * 100).toFixed(1);
   const doses = (vial / dose).toFixed(0);
+
+  // Persist the user's recon settings back to their active stack so the Today
+  // checklist shows units based on these values, not the original import.
+  const stack = activeStacks.find(s => s.compoundId === compoundId);
+  if (stack) {
+    stack.vialMg = vial;
+    stack.waterMl = water;
+    stack.dose = dose;
+    localStorage.setItem('activeStacks', JSON.stringify(activeStacks));
+    renderTodayScreen();
+  }
+
   document.getElementById('modal-result').innerHTML = `<p>
     <strong>Concentration:</strong> ${conc.toFixed(2)} mg/mL<br>
     <strong>Dose (${dose}${c.doseUnit}):</strong> ${units} units on syringe<br>
