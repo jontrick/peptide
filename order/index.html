@@ -1,35 +1,792 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Group Order</title>
-<!-- Launcher for the group order page (Google Apps Script). Gives it a short link and the "P" home-screen icon. -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Group Order">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#0e7c66">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
-  html, body { margin: 0; height: 100%; background: #f4f5f2; }
-  iframe { border: 0; width: 100%; height: 100%; display: block; }
-  .fallback { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px; text-align: center;
-    font: 13px -apple-system, BlinkMacSystemFont, sans-serif; color: #6b7176; display: none; }
-  .fallback a { color: #0e7c66; }
+  :root{
+    --bg:#f4f5f2; --card:#fff; --ink:#15181a; --mute:#6b7176; --line:#e3e5e1;
+    --acc:#0e7c66; --acc-soft:#e3f2ee; --warn:#b35c00; --warn-soft:#fff2e0; --bad:#b3261e;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+  input{font:inherit;color:inherit}
+  .wrap{max-width:560px;margin:0 auto;padding:16px 14px 120px}
+  h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.01em}
+  .sub{color:var(--mute);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px}
+  .row{display:flex;align-items:center;gap:10px}
+  .sp{flex:1}
+  .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--acc-soft);color:var(--acc)}
+  .pill.lock{background:#eceef0;color:#444}
+  .bar{height:8px;background:#eceeea;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+  .bar>i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width .4s}
+  .ready{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .ready .sub{color:#d9f1ea}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border-radius:11px;font-weight:600;background:var(--acc);color:#fff}
+  .btn.sec{background:#eceeea;color:var(--ink)}
+  .btn.wa{background:#25d366;color:#08331b}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  .btn.full{width:100%}
+  .btn:disabled{opacity:.45}
+  .ready .btn.wa{background:#fff;color:#0b5e2e}
+  .people{list-style:none;margin:8px 0 0;padding:0}
+  .people li{display:flex;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .people li:first-child{border-top:0}
+  .people .you{font-size:11px;font-weight:700;color:var(--acc);margin-left:4px}
+  .muted{color:var(--mute)}
+  .search{width:100%;padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:#fff;margin-top:12px}
+  .grp{padding:10px 0;border-top:1px solid var(--line)}
+  .grp:first-child{border-top:0}
+  .gname{font-weight:650}
+  .var{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:14px}
+  .var .spec{flex:1;color:var(--mute)}
+  .var .price{min-width:76px;text-align:right;font-variant-numeric:tabular-nums}
+  .qty{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .qty button{width:32px;height:32px;font-size:18px;color:var(--acc)}
+  .qty span{min-width:22px;text-align:center;font-weight:650;font-variant-numeric:tabular-nums}
+  .qty.on{border-color:var(--acc);background:var(--acc-soft)}
+  .dock{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(8px)}
+  .dock .in{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .dock b{font-size:17px}
+  .sheet{position:fixed;inset:0;background:rgba(10,14,12,.45);display:none;align-items:flex-end;justify-content:center;z-index:9}
+  .sheet.show{display:flex}
+  .sheet .panel{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  .panel h2{margin:0 0 10px;font-size:18px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--mute);margin:12px 0 4px}
+  .inp{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#fff}
+  table.bill{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+  table.bill td{padding:5px 0;vertical-align:top}
+  table.bill td:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  table.bill tr.tot td{border-top:1px solid var(--line);padding-top:9px;font-weight:700;font-size:16px}
+  .note{font-size:12.5px;color:var(--mute);margin-top:8px}
+  .note.warn{color:var(--warn);background:var(--warn-soft);padding:8px 10px;border-radius:9px}
+  .err{color:var(--bad);font-size:13px;margin-top:8px}
+  .stack>*+*{margin-top:8px}
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#15181a;color:#fff;padding:9px 14px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:20}
+  .toast.show{opacity:1}
+  .foot{text-align:center;margin-top:22px;font-size:12px;color:var(--mute)}
+  .foot button{text-decoration:underline;color:var(--mute)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  pre.combo{background:#f6f7f5;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12.5px;white-space:pre-wrap;margin:8px 0 0}
+  .loading{padding:40px 0;text-align:center;color:var(--mute)}
+  .tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;background:#eceeea;color:#555}
+  .chips{display:flex;gap:6px;overflow-x:auto;margin:10px -14px 2px;padding:0 14px 4px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:#444}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .new{font-size:10px;font-weight:800;letter-spacing:.04em;color:#fff;background:#d23a2a;border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:2px}
+  .code{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#3d4a52;background:#eef1ee;border:1px solid var(--line);border-radius:5px;padding:2px 5px;margin-right:6px;white-space:nowrap}
+  .acting{background:#15181a;color:#fff;border-color:#15181a}
+  .acting .sub{color:#c9cdd0}
+  .tag.paid{background:var(--acc-soft);color:var(--acc)}
+  .half{font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:99px;padding:2px 7px;margin-left:6px;white-space:nowrap}
+  .split li{align-items:center}
+  .quote{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mute)}
 </style>
 </head>
 <body>
-<iframe id="app" title="Group Order" allow="clipboard-write"
-  src="https://script.google.com/macros/s/AKfycbxOO_wejHAUB-7xq452XJLuJCf8BUy7E6smlJNloyklga-VCQXQCl3x8QNySPEryXb5/exec"></iframe>
-<div class="fallback" id="fb">Not loading? <a href="https://script.google.com/macros/s/AKfycbxOO_wejHAUB-7xq452XJLuJCf8BUy7E6smlJNloyklga-VCQXQCl3x8QNySPEryXb5/exec">Open the order page directly</a></div>
+<div class="wrap" id="app"><div class="loading">Loading the order…</div></div>
+
+<div class="dock" id="dock" style="display:none">
+  <div class="in">
+    <div class="sp"><div class="sub" id="dockSub"></div><b id="dockTotal"></b></div>
+    <button class="btn" id="dockBtn">Review</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
+<div class="toast" id="toast"></div>
+
 <script>
-  // show a direct link if the embedded page hasn't loaded after a while
-  var loaded = false;
-  document.getElementById('app').addEventListener('load', function () { loaded = true; });
-  setTimeout(function () { if (!loaded) document.getElementById('fb').style.display = 'block'; }, 12000);
+window.__showErr = function(msg){
+  var el = document.getElementById('app');
+  if (el) el.innerHTML = '<div class="card"><b>Something went wrong loading the order.</b><div class="sub" style="margin-top:6px">Screenshot this for the organiser:</div><pre class="combo">' +
+    String(msg).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }) + '</pre><button class="btn full" onclick="location.reload()">Try again</button></div>';
+};
+window.addEventListener('error', function(e){ if (!window.__loaded) window.__showErr((e.message || 'Error') + (e.lineno ? ' (line ' + e.lineno + ')' : '')); });
+</script>
+<script>
+const PRODUCTS = [{"c":"AA3","n":"Acetic Acid Water 0.6%","s":"3ml × 10 vials","u":6,"k":"water","nw":1},{"c":"AA10","n":"Acetic Acid Water 0.6%","s":"10ml × 10 vials","u":7,"k":"water"},{"c":"WA3","n":"Saline Water (Benzalkonium)","s":"3ml × 10 vials","u":6,"k":"water","nw":1},{"c":"WA10","n":"Saline Water (Benzalkonium)","s":"10ml × 10 vials","u":7,"k":"water","nw":1},{"c":"BA3","n":"BAC Water (Benzyl Alcohol 0.9%)","s":"3ml × 10 vials","u":6,"k":"water"},{"c":"BA10","n":"BAC Water (Benzyl Alcohol 0.9%)","s":"10ml × 10 vials","u":7,"k":"water"},{"c":"5AM","n":"5-amino-1mq","s":"5mg × 10 vials","u":46,"k":"wl"},{"c":"10AM","n":"5-amino-1mq","s":"10mg × 10 vials","u":74,"k":"wl"},{"c":"50AM","n":"5-amino-1mq","s":"50mg × 10 vials","u":110,"k":"wl"},{"c":"ADA-K10","n":"Adalank","s":"10mg × 10 vials","u":131,"k":"brain","nw":1},{"c":"ADA5","n":"Adamax-984","s":"5mg × 10 vials","u":52,"k":"brain","nw":1},{"c":"ADA10","n":"Adamax-984","s":"10mg × 10 vials","u":75,"k":"brain","nw":1},{"c":"ADA10M","n":"Adamax-1302","s":"10mg × 10 vials","u":162,"k":"brain","nw":1},{"c":"AP5","n":"Adipotide","s":"5mg × 10 vials","u":186,"k":"wl"},{"c":"AP10","n":"Adipotide","s":"10mg × 10 vials","u":258,"k":"wl","nw":1},{"c":"AK50","n":"AHK-Cu","s":"50mg × 10 vials","u":49,"k":"skin","nw":1},{"c":"AK100","n":"AHK-Cu","s":"100mg × 10 vials","u":80,"k":"skin"},{"c":"5AD","n":"AOD","s":"5mg × 10 vials","u":123,"k":"wl"},{"c":"RA10","n":"Ara-290","s":"10mg × 10 vials","u":71,"k":"heal"},{"c":"RA40","n":"Ara-290","s":"40mg × 10 vials","u":138,"k":"heal","nw":1},{"c":"B12","n":"B12","s":"10ml × 10 vials","u":29,"k":"vit"},{"c":"BC5","n":"BPC-157","s":"5mg × 10 vials","u":40,"k":"heal"},{"c":"BC10","n":"BPC-157","s":"10mg × 10 vials","u":55,"k":"heal"},{"c":"BC20","n":"BPC-157","s":"20mg × 10 vials","u":80,"k":"heal","nw":1},{"c":"BB10","n":"BPC-157 + TB-500","s":"(5+5)mg × 10 vials","u":109,"k":"heal"},{"c":"BB20","n":"BPC-157 + TB-500","s":"(10+10)mg × 10 vials","u":200,"k":"heal"},{"c":"GK110","n":"GHK-Cu 100mg + KPV 10mg","s":"110mg × 10 vials","u":94,"k":"heal","nw":1},{"c":"BBG70","n":"GLOW (BPC 10 + GHK-Cu 50 + TB 10)","s":"(10+50+10)mg × 10 vials","u":197,"k":"heal"},{"c":"KLOW80","n":"KLOW (GHK-Cu 50 + TB 10 + BPC 10 + KPV 10)","s":"(50+10+10+10)mg × 10 vials","u":246,"k":"heal"},{"c":"BR20","n":"Bronchogen","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"CGL5","n":"Cagrilintide","s":"5mg × 10 vials","u":123,"k":"wl"},{"c":"CGL10","n":"Cagrilintide","s":"10ml × 10 vials","u":190,"k":"wl"},{"c":"CGL20","n":"Cagrilintide","s":"20mg × 10 vials","u":218,"k":"wl","nw":1},{"c":"CS5","n":"Cagrilintide + Semaglutide","s":"(2.5+2.5)mg × 10 vials","u":94,"k":"wl","nw":1},{"c":"CS10","n":"Cagrilintide + Semaglutide","s":"(5+5)mg × 10 vials","u":171,"k":"wl"},{"c":"CA20","n":"Cardiogen","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"LAX20","n":"Cartalax","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"CBL60","n":"Cerebrolysin","s":"60mg × 6 vials","u":40,"k":"brain"},{"c":"CH20","n":"Chonluten","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"CD2","n":"CJC-1295 with DAC","s":"2mg × 10 vials","u":69,"k":"gh","nw":1},{"c":"CD5","n":"CJC-1295 with DAC","s":"5mg × 10 vials","u":180,"k":"gh"},{"c":"CD10","n":"CJC-1295 with DAC","s":"10mg × 10 vials","u":343,"k":"gh"},{"c":"CND2","n":"CJC-1295 no DAC","s":"2mg × 10 vials","u":48,"k":"gh","nw":1},{"c":"CND5","n":"CJC-1295 no DAC","s":"5mg × 10 vials","u":94,"k":"gh"},{"c":"CND10","n":"CJC-1295 no DAC","s":"10mg × 10 vials","u":180,"k":"gh"},{"c":"CP10","n":"CJC-1295 no DAC + Ipamorelin","s":"(5+5)mg × 10 vials","u":111,"k":"gh"},{"c":"CP20","n":"CJC-1295 no DAC + Ipamorelin","s":"(10+10)mg × 10 vials","u":161,"k":"gh","nw":1},{"c":"COR20","n":"Cortagen","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"CRY20","n":"Crystagen","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"DS5","n":"DSIP","s":"5mg × 10 vials","u":43,"k":"brain"},{"c":"DS10","n":"DSIP","s":"10mg × 10 vials","u":74,"k":"brain"},{"c":"DS15","n":"DSIP","s":"15mg × 10 vials","u":100,"k":"brain"},{"c":"ET10","n":"Epitalon","s":"10mg × 10 vials","u":63,"k":"long"},{"c":"ET25","n":"Epitalon","s":"25mg × 10 vials","u":95,"k":"long","nw":1},{"c":"ET50","n":"Epitalon","s":"50mg × 10 vials","u":171,"k":"long"},{"c":"E3K","n":"EPO","s":"3000iu × 10 vials","u":143,"k":"horm"},{"c":"ELO10","n":"Eloralintide","s":"10mg × 10 vials","u":340,"k":"wl","nw":1},{"c":"F410","n":"FOXO4","s":"10mg × 10 vials","u":529,"k":"long"},{"c":"CU50","n":"GHK-Cu","s":"50mg × 10 vials","u":37,"k":"skin"},{"c":"CU100","n":"GHK-Cu","s":"100mg × 10 vials","u":43,"k":"skin"},{"c":"G25","n":"GHRP-2 Acetate","s":"5mg × 10 vials","u":37,"k":"gh"},{"c":"G210","n":"GHRP-2 Acetate","s":"10mg × 10 vials","u":68,"k":"gh","nw":1},{"c":"G65","n":"GHRP-6 Acetate","s":"5mg × 10 vials","u":46,"k":"gh"},{"c":"G610","n":"GHRP-6 Acetate","s":"10mg × 10 vials","u":54,"k":"gh","nw":1},{"c":"GTT","n":"Glutathione","s":"1500mg × 10 vials","u":74,"k":"vit"},{"c":"GND2","n":"Gonadorelin Acetate","s":"2mg × 10 vials","u":40,"k":"horm"},{"c":"CTG20","n":"Gortagen","s":"20mg × 10 vials","u":103,"k":"long","nw":1},{"c":"G5K","n":"HCG","s":"5000iu × 10 vials","u":86,"k":"horm"},{"c":"G10K","n":"HCG","s":"10000iu × 10 vials","u":171,"k":"horm"},{"c":"HX2","n":"Hexarelin Acetate","s":"2mg × 10 vials","u":51,"k":"gh"},{"c":"HX5","n":"Hexarelin Acetate","s":"5mg × 10 vials","u":100,"k":"gh"},{"c":"FR2","n":"HGH Fragment 176-191","s":"2mg × 10 vials","u":63,"k":"wl"},{"c":"FR5","n":"HGH Fragment 176-191","s":"5mg × 10 vials","u":109,"k":"wl"},{"c":"FR10","n":"HGH Fragment 176-191","s":"10mg × 10 vials","u":200,"k":"wl"},{"c":"HUM10","n":"Humanin","s":"10ml × 10 vials","u":182,"k":"long"},{"c":"IG01","n":"IGF-1 LR3","s":"0.1mg × 10 vials","u":43,"k":"gh"},{"c":"IG1","n":"IGF-1 LR3","s":"1mg × 10 vials","u":200,"k":"gh"},{"c":"IP5","n":"Ipamorelin","s":"5mg × 10 vials","u":43,"k":"gh"},{"c":"IP10","n":"Ipamorelin","s":"10mg × 10 vials","u":83,"k":"gh"},{"c":"KS5","n":"Kisspeptin-10","s":"5mg × 10 vials","u":43,"k":"horm"},{"c":"KS10","n":"Kisspeptin-10","s":"10mg × 10 vials","u":114,"k":"horm"},{"c":"LC120","n":"LC120","s":"10mg × 10 vials","u":66,"k":"wl"},{"c":"LC216","n":"Lipo-C with vitamins B12","s":"10ml × 10 vials","u":66,"k":"vit"},{"c":"LC600","n":"L-Carnitine","s":"10ml × 10 vials","u":80,"k":"vit"},{"c":"Lemon Bottle","n":"Lemon Bottle","s":"10mg × 10 vials","u":70,"k":"wl"},{"c":"LL5","n":"Liraglutide","s":"5mg × 10 vials","u":149,"k":"wl"},{"c":"LL10","n":"Liraglutide","s":"10mg × 10 vials","u":214,"k":"wl"},{"c":"LI20","n":"Livagen","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"375","n":"LL37","s":"5mg × 10 vials","u":86,"k":"heal"},{"c":"KPV5","n":"KPV","s":"5mg × 10 vials","u":49,"k":"heal"},{"c":"KPV10","n":"KPV","s":"10mg × 10 vials","u":63,"k":"heal"},{"c":"KPV30","n":"KPV","s":"30mg × 10 vials","u":92,"k":"heal","nw":1},{"c":"KPV50","n":"KPV","s":"50mg × 10 vials","u":151,"k":"heal","nw":1},{"c":"MZ10","n":"Mazdutide","s":"10ml × 10 vials","u":200,"k":"wl"},{"c":"MS5","n":"MOTS-c","s":"5mg × 10 vials","u":38,"k":"long","nw":1},{"c":"MS10","n":"MOTS-c","s":"10mg × 10 vials","u":69,"k":"long"},{"c":"MS20","n":"MOTS-c","s":"20mg × 10 vials","u":120,"k":"long","nw":1},{"c":"MS40","n":"MOTS-c","s":"40mg × 10 vials","u":200,"k":"long"},{"c":"MT1","n":"MT1","s":"10mg × 10 vials","u":51,"k":"skin"},{"c":"ML5","n":"MT-2 (Melanotan 2)","s":"5mg × 10 vials","u":46,"k":"skin"},{"c":"ML10","n":"MT-2 (Melanotan 2)","s":"10mg × 10 vials","u":51,"k":"skin"},{"c":"NJ100","n":"NAD+","s":"100mg × 10 vials","u":43,"k":"long"},{"c":"NJ500","n":"NAD+","s":"500mg × 10 vials","u":83,"k":"long"},{"c":"NJ1000","n":"NAD+","s":"1000mg × 10 vials","u":157,"k":"long"},{"c":"OT2","n":"Oxytocin","s":"2mg × 10 vials","u":43,"k":"horm"},{"c":"OT5","n":"Oxytocin","s":"5mg × 10 vials","u":51,"k":"horm"},{"c":"OT10","n":"Oxytocin","s":"10mg × 10 vials","u":69,"k":"horm","nw":1},{"c":"P210","n":"P21","s":"10mg × 10 vials","u":86,"k":"brain"},{"c":"PA20","n":"Pancragen","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"PE10","n":"PE-22-28","s":"10mg × 10 vials","u":55,"k":"brain","nw":1},{"c":"PIN10","n":"Pinealon","s":"10mg × 10 vials","u":71,"k":"brain"},{"c":"PIN20","n":"Pinealon","s":"20mg × 10 vials","u":100,"k":"brain"},{"c":"PN5","n":"PNC","s":"5mg × 10 vials","u":78,"k":"long","nw":1},{"c":"PN10","n":"PNC","s":"10mg × 10 vials","u":129,"k":"long","nw":1},{"c":"MAX20","n":"Prostamax","s":"20mg × 10 vials","u":143,"k":"long"},{"c":"P41","n":"PT-141","s":"10mg × 10 vials","u":66,"k":"horm"},{"c":"RT5","n":"Retatrutide","s":"5mg × 10 vials","u":51,"k":"wl"},{"c":"RT10","n":"Retatrutide","s":"10mg × 10 vials","u":77,"k":"wl"},{"c":"RT15","n":"Retatrutide","s":"15mg × 10 vials","u":108,"k":"wl"},{"c":"RT20","n":"Retatrutide","s":"20mg × 10 vials","u":134,"k":"wl"},{"c":"RT30","n":"Retatrutide","s":"30mg × 10 vials","u":180,"k":"wl"},{"c":"RT40","n":"Retatrutide","s":"40mg × 10 vials","u":231,"k":"wl"},{"c":"RT50","n":"Retatrutide","s":"50mg × 10 vials","u":257,"k":"wl"},{"c":"RT60","n":"Retatrutide","s":"60mg × 10 vials","u":282,"k":"wl"},{"c":"RT100","n":"Retatrutide","s":"100mg × 11 vials","u":338,"k":"wl","nw":1},{"c":"RT200","n":"Retatrutide","s":"200mg × 12 vials","u":523,"k":"wl","nw":1},{"c":"RC10","n":"Retatrutide + Cagrilintide","s":"(5+5)mg × 10 vials","u":106,"k":"wl","nw":1},{"c":"SM2","n":"Semaglutide","s":"2mg × 10 vials","u":34,"k":"wl"},{"c":"SM5","n":"Semaglutide","s":"5mg × 10 vials","u":37,"k":"wl"},{"c":"SM10","n":"Semaglutide","s":"10mg × 10 vials","u":51,"k":"wl"},{"c":"SM15","n":"Semaglutide","s":"15mg × 10 vials","u":66,"k":"wl"},{"c":"SM20","n":"Semaglutide","s":"20mg × 10 vials","u":80,"k":"wl"},{"c":"SM30","n":"Semaglutide","s":"30mg × 10 vials","u":100,"k":"wl"},{"c":"SK5","n":"Selank","s":"5mg × 10 vials","u":43,"k":"brain"},{"c":"SK10","n":"Selank","s":"10mg × 10 vials","u":63,"k":"brain"},{"c":"SK30","n":"Selank","s":"30mg × 10 vials","u":123,"k":"brain","nw":1},{"c":"XA5","n":"Semax","s":"5mg × 10 vials","u":46,"k":"brain"},{"c":"XA10","n":"Semax","s":"10mg × 10 vials","u":57,"k":"brain"},{"c":"XA30","n":"Semax","s":"30mg × 10 vials","u":108,"k":"brain","nw":1},{"c":"XS20","n":"Semax + Selank","s":"(10+10)mg × 10 vials","u":111,"k":"brain","nw":1},{"c":"SMO5","n":"Sermorelin","s":"5mg × 10 vials","u":89,"k":"gh"},{"c":"SMO10","n":"Sermorelin","s":"10mg × 10 vials","u":151,"k":"gh"},{"c":"NP810","n":"Snap-8","s":"10mg × 10 vials","u":43,"k":"skin"},{"c":"NP820","n":"Snap-8","s":"20mg × 10 vials","u":60,"k":"skin","nw":1},{"c":"2S10","n":"SS-31","s":"10mg × 10 vials","u":100,"k":"long"},{"c":"2S50","n":"SS-31","s":"50mg × 10 vials","u":343,"k":"long"},{"c":"SUR10","n":"Survodutide","s":"10mg × 10 vials","u":314,"k":"wl"},{"c":"BT5","n":"TB-500","s":"5mg × 10 vials","u":86,"k":"heal"},{"c":"BT10","n":"TB-500","s":"10mg × 10 vials","u":157,"k":"heal"},{"c":"BT20","n":"TB-500","s":"20mg × 10 vials","u":270,"k":"heal"},{"c":"TER10","n":"Teriparatide","s":"10mg × 10 vials","u":229,"k":"horm"},{"c":"TSM2","n":"Tesamorelin","s":"2mg × 10 vials","u":54,"k":"gh","nw":1},{"c":"TSM5","n":"Tesamorelin","s":"5mg × 10 vials","u":88,"k":"gh"},{"c":"TSM10","n":"Tesamorelin","s":"10mg × 10 vials","u":162,"k":"gh"},{"c":"TSM15","n":"Tesamorelin","s":"15mg × 10 vials","u":197,"k":"gh","nw":1},{"c":"TSM20","n":"Tesamorelin","s":"20mg × 10 vials","u":274,"k":"gh"},{"c":"TIP10","n":"Tesamorelin + Ipamorelin","s":"(5+5)mg × 10 vials","u":115,"k":"gh","nw":1},{"c":"TIP20","n":"Tesamorelin + Ipamorelin","s":"(10+10)mg × 10 vials","u":194,"k":"gh","nw":1},{"c":"TG20","n":"Testagen","s":"20mg × 10 vials","u":103,"k":"long"},{"c":"TY10","n":"Thymalin","s":"10mg × 10 vials","u":74,"k":"long"},{"c":"TA5","n":"Thymosin Alpha-1","s":"5mg × 10 vials","u":100,"k":"heal"},{"c":"TA10","n":"Thymosin Alpha-1","s":"10mg × 10 vials","u":186,"k":"heal"},{"c":"TR5","n":"Tirzepatide","s":"5mg × 10 vials","u":40,"k":"wl"},{"c":"TR10","n":"Tirzepatide","s":"10mg × 10 vials","u":54,"k":"wl"},{"c":"TR15","n":"Tirzepatide","s":"15mg × 10 vials","u":69,"k":"wl"},{"c":"TR20","n":"Tirzepatide","s":"20mg × 10 vials","u":86,"k":"wl"},{"c":"TR30","n":"Tirzepatide","s":"30mg × 10 vials","u":111,"k":"wl"},{"c":"TR40","n":"Tirzepatide","s":"40mg × 10 vials","u":134,"k":"wl"},{"c":"TR50","n":"Tirzepatide","s":"50mg × 10 vials","u":171,"k":"wl"},{"c":"TR60","n":"Tirzepatide","s":"60mg × 10 vials","u":200,"k":"wl"},{"c":"TR100","n":"Tirzepatide","s":"100mg × 10 vials","u":258,"k":"wl","nw":1},{"c":"TR120","n":"Tirzepatide","s":"120mg × 10 vials","u":285,"k":"wl","nw":1},{"c":"TR200","n":"Tirzepatide","s":"200mg × 10 vials","u":403,"k":"wl","nw":1},{"c":"VE10","n":"Vesugen","s":"10mg × 10 vials","u":49,"k":"long","nw":1},{"c":"VE20","n":"Vesugen","s":"20mg × 10 vials","u":65,"k":"long","nw":1},{"c":"VI20","n":"Vilon","s":"20mg × 10 vials","u":157,"k":"long"},{"c":"VIP5","n":"VIP","s":"5mg × 10 vials","u":86,"k":"horm"},{"c":"VIP10","n":"VIP","s":"10mg × 10 vials","u":157,"k":"horm"}];
+const CATEGORIES = {"water": "Waters & supplies", "wl": "Weight & metabolic", "heal": "Healing & recovery", "gh": "GH & growth", "skin": "Skin & tanning", "brain": "Brain, mood & sleep", "long": "Longevity & bioregulators", "horm": "Hormones & sexual health", "vit": "Vitamins & aminos"};
+const APP_URL = "https://script.google.com/macros/s/AKfycbxOO_wejHAUB-7xq452XJLuJCf8BUy7E6smlJNloyklga-VCQXQCl3x8QNySPEryXb5/exec";
+const SHARE_URL = 'https:' + '/' + '/jontrick.github.io/peptide/order/';   /* the short link with the P icon */
+</script>
+<script>
+/*SHIP-START*/
+/* ---------- shipping (Yoki's rates, Nov 2026) ----------
+   This block is shared by Code.gs and Index.html so quotes on the page match the server.
+   Edit SHIP if Tong changes their rates. No double-slash comments here: the page strips them. */
+const SHIP = {
+  methods: {
+    ups:      { name: 'UPS Express',   base: 115, days: '4-8 days',  water: true },
+    fedex:    { name: 'FedEx Express', base: 85,  days: '5-8 days',  water: false },
+    standard: { name: 'Standard',      base: 60,  days: '7-14 days', water: true }
+  },
+  maxBoxes: 15,                            /* boxes per parcel */
+  tiers: [[5, 0], [10, 10], [15, 20]],     /* up to N boxes: + US$ surcharge */
+  freeWater: 2,                            /* water boxes per parcel with no surcharge */
+  waterFee: 10,                            /* US$ per extra water box */
+  waterMethod: 'standard'                  /* how waters go when sent separately */
+};
+function shipTier(n) {
+  for (let i = 0; i < SHIP.tiers.length; i++) if (n <= SHIP.tiers[i][0]) return SHIP.tiers[i][1];
+  return SHIP.tiers[SHIP.tiers.length - 1][1];
+}
+/* cost of sending `boxes` (of which `water` are water) by method m, filling parcels to the max */
+function shipParcels(boxes, water, m) {
+  if (boxes <= 0) return { cost: 0, parcels: 0, sizes: [], baseCost: 0, tierCost: 0, waterCost: 0 };
+  const n = Math.ceil(boxes / SHIP.maxBoxes);
+  let left = boxes, tierCost = 0;
+  const sizes = [];
+  for (let i = 0; i < n; i++) { const b = Math.min(SHIP.maxBoxes, left); left -= b; sizes.push(b); tierCost += shipTier(b); }
+  const baseCost = n * m.base, waterCost = SHIP.waterFee * Math.max(0, water - SHIP.freeWater * n);
+  return { cost: baseCost + tierCost + waterCost, parcels: n, sizes: sizes, baseCost: baseCost, tierCost: tierCost, waterCost: waterCost };
+}
+/* best way to ship P peptide boxes + W water boxes. waterMode: auto | together | separate */
+function shipPlan(P, W, method, waterMode) {
+  const m = SHIP.methods[method] || SHIP.methods.ups;
+  const wm = SHIP.methods[SHIP.waterMethod];
+  const pepOnly = shipParcels(P, 0, m);
+  const opts = [];
+  if (m.water && waterMode !== 'separate') {
+    const t = shipParcels(P + W, W, m);
+    opts.push({ kind: 'together', cost: t.cost, main: t, inMain: W, water: null });
+  }
+  if (W > 0 && (waterMode !== 'together' || !m.water)) {
+    const spare = pepOnly.parcels * SHIP.maxBoxes - P;
+    const maxK = m.water ? Math.min(W, spare, SHIP.freeWater * pepOnly.parcels) : 0;
+    for (let k = 0; k <= maxK; k++) {
+      const main = shipParcels(P + k, k, m), wp = shipParcels(W - k, W - k, wm);
+      opts.push({ kind: 'separate', cost: main.cost + wp.cost, main: main, inMain: k, water: wp });
+    }
+  }
+  if (!opts.length) opts.push({ kind: 'together', cost: pepOnly.cost, main: pepOnly, inMain: 0, water: null });
+  let best = opts[0];
+  opts.forEach(o => { if (o.cost < best.cost - 0.001) best = o; });
+  const together = opts.filter(o => o.kind === 'together')[0] || null;
+  let sep = null;
+  opts.filter(o => o.kind === 'separate').forEach(o => { if (!sep || o.cost < sep.cost) sep = o; });
+  return { method: method, methodName: m.name, days: m.days, waterName: wm.name, waterDays: wm.days,
+    P: P, W: W, base: P > 0 ? m.base : 0, pepOnly: pepOnly.cost, total: best.cost, best: best, together: together, separate: sep };
+}
+/* rows: [{items, noShip}]; isWater(code) -> bool. Returns how shipping is shared out:
+   - one parcel's base fee is shared equally by everyone who pays shipping
+   - extra parcels and box-count surcharges are split per box (all boxes, water included)
+   - water surcharges, and a separate water parcel if used, are split per water box
+   If cfg.shipQuoteUSD is set (the real price from the supplier), every part is scaled to match it. */
+function shipShare(rows, cfg, isWater) {
+  const payers = rows.filter(r => !r.noShip);
+  const nPay = payers.length;
+  if (cfg.shipMethod === 'manual' || !cfg.shipMethod) {
+    const t = Number(cfg.shipUSD) || 0;
+    return { manual: true, total: t, calculated: t, quoted: false, shared: t, sharedEach: nPay ? t / nPay : 0, perBox: 0, perPep: 0, perWater: 0, payers: nPay, plan: null };
+  }
+  const combined = {};
+  rows.forEach(r => Object.keys(r.items).forEach(c => combined[c] = (combined[c] || 0) + r.items[c]));
+  let P = 0, W = 0;
+  Object.keys(combined).forEach(c => { const q = Math.ceil(combined[c]); if (isWater(c)) W += q; else P += q; });
+  const plan = shipPlan(P, W, cfg.shipMethod, cfg.waterMode || 'auto');
+  const b = plan.best, m = SHIP.methods[plan.method] || SHIP.methods.ups;
+  let shared = b.main.parcels ? m.base : 0;
+  let boxPool = b.main.cost - shared - b.main.waterCost;
+  let waterPool = b.main.waterCost + (b.water ? b.water.cost : 0);
+  if (!b.main.parcels && b.water) { shared = b.water.cost; waterPool = 0; }
+  const quote = Number(cfg.shipQuoteUSD) || 0;
+  const scale = quote > 0 && plan.total > 0 ? quote / plan.total : 1;
+  shared *= scale; boxPool *= scale; waterPool *= scale;
+  let payBoxes = 0, payWater = 0;
+  payers.forEach(r => Object.keys(r.items).forEach(c => { payBoxes += r.items[c]; if (isWater(c)) payWater += r.items[c]; }));
+  if (!payWater) { boxPool += waterPool; waterPool = 0; }
+  if (!payBoxes) { shared += boxPool; boxPool = 0; }
+  const perBox = payBoxes ? boxPool / payBoxes : 0;
+  return { manual: false, total: quote > 0 ? quote : plan.total, calculated: plan.total, quoted: quote > 0,
+    shared: shared, sharedEach: nPay ? shared / nPay : 0, perBox: perBox, perPep: perBox,
+    perWater: payWater ? waterPool / payWater : 0, payers: nPay, plan: plan };
+}
+/* one person's shipping in USD, with the parts */
+function shipFor(items, sh, exempt, isWater) {
+  if (exempt) return { total: 0, shared: 0, boxes: 0, water: 0 };
+  let boxes = 0, water = 0;
+  Object.keys(items).forEach(c => { boxes += (sh.perBox || 0) * items[c]; if (isWater(c)) water += sh.perWater * items[c]; });
+  return { total: sh.sharedEach + boxes + water, shared: sh.sharedEach, boxes: boxes, water: water };
+}
+/* plain-English summary of the plan */
+function shipSummary(plan) {
+  if (!plan) return '';
+  const b = plan.best;
+  let s = plan.methodName + ': ' + b.main.parcels + ' parcel' + (b.main.parcels === 1 ? '' : 's') + ' (' + b.main.sizes.join(' + ') + ' boxes' + (b.inMain ? ', incl. ' + b.inMain + ' water' : '') + ')';
+  if (b.water && b.water.parcels) s += ' + ' + plan.waterName + ' for ' + (plan.W - b.inMain) + ' water box' + (plan.W - b.inMain === 1 ? '' : 'es');
+  return s + ' = US$' + plan.total.toFixed(2);
+}
+/*SHIP-END*/
+</script>
+<script>
+{
+/* ---------------- backend bridge ----------------
+   Two routes to the server: Google's google.script.run, and a plain JSON request to the web app URL.
+   google.script.run can stall when the browser is signed in to several Google accounts, so the page
+   races both on first load and sticks with whichever answers. */
+let route = (window.google && google.script && google.script.run) ? null : 'fetch';   /* 'gsr' | 'fetch' */
+function viaGsr(fn, args){
+  return new Promise((res, rej) => {
+    if (!(window.google && google.script && google.script.run)) return rej(new Error('google.script.run unavailable'));
+    google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e && e.message ? e : new Error(String(e))))[fn](...args);
+  });
+}
+async function viaFetch(fn, args){
+  const r = await fetch(APP_URL, { method: 'POST', body: JSON.stringify({ fn, args }), credentials: 'omit', redirect: 'follow' });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Server error');
+  return j.data;
+}
+function timeout(ms){ return new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), ms)); }
+async function call(fn, ...args){
+  if (route === 'gsr') return Promise.race([viaGsr(fn, args), timeout(30000)]);
+  if (route === 'fetch') return viaFetch(fn, args);
+  /* first call: try google.script.run, start the backup after 4 s, take whichever answers first */
+  const errs = [];
+  const a = viaGsr(fn, args).then(v => { route = route || 'gsr'; return v; }, e => { errs.push('gsr: ' + e.message); throw e; });
+  const b = new Promise(r => setTimeout(r, 4000)).then(() => route ? Promise.reject(new Error('skip')) : viaFetch(fn, args))
+    .then(v => { route = route || 'fetch'; return v; }, e => { if (e.message !== 'skip') errs.push('fetch: ' + e.message); throw e; });
+  try { return await Promise.any([a, b, timeout(25000)]); }
+  catch (e) { throw new Error(errs.join(' | ') || 'No response from the server'); }
+}
+
+/* ---------------- state ---------------- */
+const P = {}; PRODUCTS.forEach(p => P[p.c] = p);
+const GROUPS = [];
+(() => { const m = {}; PRODUCTS.forEach(p => { if (!m[p.n]) { m[p.n] = { n: p.n, v: [] }; GROUPS.push(m[p.n]); } m[p.n].v.push(p); }); })();
+
+let S = null;              /* server state */
+let cart = {};             /* code -> qty */
+let q = '';                /* search */
+let cat = '';              /* category filter ('' = all, 'new' = new on latest list) */
+let actingFor = null;      /* organiser entering an order for someone: {id?, name, phone, email} */
+let me = { name:'', phone:'', email:'' };
+let adminPin = null, A = null, lastCombo = '';
+
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem('go_'+k)); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem('go_'+k, JSON.stringify(v)); } catch(e){} }
+};
+let token = store.get('token');
+if (!token) { token = Math.random().toString(36).slice(2) + Date.now().toString(36); store.set('token', token); }
+me = Object.assign(me, store.get('me') || {});
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const aud = n => 'A$' + (Math.round(n * 100) / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const usd = n => 'US$' + n.toFixed(2);
+
+function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2200); }
+function openUrl(u){ window.open(u, '_blank'); }
+function copy(t){
+  const done = () => toast('Copied');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, fallback); else fallback();
+  function fallback(){ const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch(e){} ta.remove(); }
+}
+
+/* ---------------- maths (mirrors server) ---------------- */
+function subUSD(items){ return Object.keys(items).reduce((s,c) => s + (P[c] ? P[c].u * items[c] : 0), 0); }
+const isWaterC = c => !!P[c] && P[c].k === 'water';
+function bill(items, sh, exempt){
+  const c = S.cfg, list = subUSD(items), disc = list * (Number(c.discountPct) || 0) / 100, sub = list - disc;
+  const sp = shipFor(items, sh, exempt, isWaterC), ship = sp.total;
+  const fee = (sub + ship) * c.feePct / 100, t = sub + ship + fee;
+  return { listUSD: list, discountUSD: disc, subUSD: sub, shipUSD: ship, shipParts: sp, feeUSD: fee, totalUSD: t, totalAUD: Math.round(t * c.rate * 100) / 100 };
+}
+/* shipping for the round as it would be with `items` in place of order `id` (or added as a new order) */
+function shipWith(id, items, exempt){
+  const rows = S.orders.filter(o => o.id !== id).map(o => ({ items: o.items, noShip: !!o.noShip }));
+  rows.push({ items: items, noShip: !!exempt });
+  return shipShare(rows, S.cfg, isWaterC);
+}
+const kitAUD = code => P[code].u * S.cfg.rate;
+const payersNow = () => S.payers != null ? S.payers : S.people;
+function editCtx(){
+  let id = null, exempt = false;
+  if (actingFor) { const o = actingFor.id ? S.orders.find(x => x.id === actingFor.id) : null; if (o) { id = o.id; exempt = !!o.noShip; } }
+  else { const m = myOrder(); if (m) { id = m.id; exempt = !!m.noShip; } }
+  const sh = shipWith(id, cart, exempt);
+  return { sh: sh, exempt: exempt, payers: sh.payers };
+}
+const ql = q => { const w = Math.floor(q); return q % 1 ? (w ? w + '½' : '½') : String(q); };
+const vials = code => { const m = /×\s*(\d+)\s*vials/.exec(P[code].s); return m ? +m[1] : 10; };
+const openHalf = code => (S.openHalves || []).find(h => h.code === code);
+const fmtDate = iso => { try { return new Date(iso).toLocaleDateString('en-AU', { day:'numeric', month:'short' }); } catch(e){ return ''; } };
+const myOrder = () => S.orders.find(o => o.mine);
+const kits = items => Object.values(items).reduce((a,b) => a + b, 0);
+const kitsTxt = items => { const k = kits(items); return `${ql(k)} kit${k === 1 ? '' : 's'}`; };
+
+/* ---------------- render ---------------- */
+function render(){
+  const c = S.cfg, n = S.people, mine = myOrder(), locked = c.status === 'locked';
+  const ready = n >= c.target;
+  const pct = Math.min(100, n / c.target * 100);
+
+  let h = actingFor ? `<div class="card acting" style="margin:0 0 12px"><div class="row"><div class="sp"><b>Organiser mode</b>
+      <div class="sub">${actingFor.id ? 'Editing' : 'Adding'} the order for ${esc(actingFor.name)}</div></div>
+      <button class="btn sec" style="padding:8px 12px" onclick="cancelActing()">Cancel</button></div></div>` : '';
+  h += `<div class="row"><div class="sp"><h1>${esc(c.groupName)}</h1>
+    <div class="sub">Round ${c.round} · cost price · shipping split · split kits in half</div></div>
+    <span class="pill ${locked ? 'lock' : ''}">${locked ? 'Locked' : 'Open'}</span></div>`;
+
+  /* status card */
+  if (locked) {
+    h += `<div class="card"><b>Order locked with ${n} ${n === 1 ? 'person' : 'people'}.</b>
+      <div class="sub" style="margin-top:4px">${mine ? 'Your final amount is below.' : 'This round is closed — keep an eye out for the next one.'}</div></div>`;
+  } else if (ready) {
+    h += `<div class="card ready"><div style="font-size:17px;font-weight:700">🎉 Order's ready — ${n} people in</div>
+      <div class="sub" style="margin-top:4px">Anyone else keen? Every extra person makes shipping cheaper for everyone.</div>
+      <div class="bar" style="background:rgba(255,255,255,.25)"><i style="width:100%;background:#fff"></i></div>
+      <button class="btn wa full" onclick="shareGroup()">Ask the group on WhatsApp</button></div>`;
+  } else {
+    const left = c.target - n;
+    h += `<div class="card"><div class="row"><b class="sp">${n} of ${c.target} people in</b><span class="sub">${left} more to go</span></div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="sub">Once ${c.target} people are in, the order is ready to place.</div>
+      <button class="btn wa full" style="margin-top:10px" onclick="shareGroup()">Share on WhatsApp</button></div>`;
+  }
+
+  /* my order */
+  if (mine) {
+    const b = mine.bill;
+    const quoted = mine.quoteAUD ? `Quoted ${aud(mine.quoteAUD)}${mine.quotedAt ? ' on ' + fmtDate(mine.quotedAt) : ''}` : '';
+    h += `<div class="card"><div class="row"><b class="sp">Your order</b>${mine.paid ? '<span class="tag paid">Paid ✓</span>' : mine.paidClaim ? '<span class="tag">Payment sent</span>' : ''}</div>
+      ${billTable(mine.items, b, locked ? 'Final' : 'Quote')}
+      ${locked
+        ? `${quoted ? `<div class="note">${quoted} · final amount uses the prices, rate and shipping when the order was placed.</div>` : ''}
+           ${mine.paid ? '<div class="note">Payment received. Thanks!</div>'
+             : mine.paidClaim ? '<div class="note">Thanks. The organiser will confirm once it lands.</div>'
+             : `${c.payid ? `<div class="note warn">Pay <b>${aud(b.totalAUD)}</b> by PayID to <b>${esc(c.payid)}</b> · reference: your name</div>` : ''}
+                <button class="btn full" style="margin-top:10px" onclick="iPaid()">I've paid ${aud(b.totalAUD)}</button>`}`
+        : `<div class="note">${quoted ? quoted + '. ' : ''}This is a quote: prices, exchange rate and shipping can change before the order's placed. ${mine.noShip ? 'No shipping charged on your order.' : `Shipping is split ${payersNow()} way${payersNow() === 1 ? '' : 's'}. ${shipHint(mine.items)}`}</div>`}
+      <div class="row" style="margin-top:12px;gap:8px">
+        ${locked ? '' : `<button class="btn sec" onclick="editMine()">Edit</button>`}
+        ${c.ownerPhone ? `<button class="btn wa sp" onclick="sendToOwner()">Send to organiser</button>` : ''}
+      </div></div>`;
+  }
+
+  /* half kits looking for a partner */
+  const halves = (S.openHalves || []).filter(h => P[h.code]);
+  if (halves.length && !locked) {
+    h += `<div class="card"><b>Split a kit?</b><div class="sub" style="margin-top:2px">These people want half a box. Take the other half and you both pay half.</div>
+      <ul class="people split">${halves.map(x => {
+        const mineHalf = mine && mine.items[x.code] % 1;
+        return `<li><span class="sp"><span class="code">${esc(x.code)}</span>${esc(P[x.code].n)} <span class="muted">${esc(P[x.code].s.split(' × ')[0])}</span><br>
+          <span class="muted" style="font-size:12px">${esc(x.names.join(', '))} · ${vials(x.code) / 2} vials · ${aud(kitAUD(x.code) / 2)}</span></span>
+          ${mineHalf ? '<span class="half">Waiting for partner</span>' : `<button class="btn sec" style="padding:8px 12px" onclick="takeHalf('${x.code}')">Take half</button>`}</li>`;
+      }).join('')}</ul></div>`;
+  }
+
+  /* who's in */
+  if (!mine && !actingFor && n) h += `<div class="sub" style="margin:10px 2px 0">Already ordered on another phone? <button style="text-decoration:underline;color:var(--acc)" onclick="findMine()">Find my order</button></div>`;
+  h += `<div class="card"><b>Who's in</b>${n ? `<ul class="people">${S.orders.map(o => `<li><span class="sp">${esc(o.name)}${o.mine ? '<span class="you">YOU</span>' : ''}</span>
+      <span class="muted">${kitsTxt(o.items)}</span></li>`).join('')}</ul>`
+    : `<div class="sub" style="margin-top:6px">Nobody yet — be the first.</div>`}</div>`;
+
+  /* picker */
+  if (actingFor || (!locked && (!mine || editing))) {
+    const title = actingFor ? `Kits for ${esc(actingFor.name)}` : (mine ? 'Edit your kits' : 'Pick your kits');
+    const chips = [['', 'All'], ['new', 'New']].concat(Object.keys(CATEGORIES).map(k => [k, CATEGORIES[k]]))
+      .filter(([k]) => !k || PRODUCTS.some(p => k === 'new' ? p.nw : p.k === k))
+      .map(([k, label]) => `<button class="chip ${cat === k ? 'on' : ''}" onclick="setCat('${k}')">${esc(label)}</button>`).join('');
+    h += `<div class="card" id="picker"><div class="row"><b class="sp">${title}</b>
+      <span class="sub">Tap + for half a box at a time · A$ at ${Number(c.rate).toFixed(3)}${c.rateSource === 'live' ? ' (live)' : ''}${Number(c.discountPct) ? ` · <b style="color:var(--acc)">${c.discountPct}% Tong discount applied at checkout</b>` : ''}</span></div>
+      <input class="search" id="search" placeholder="Search name or Tong code e.g. BPC, BC10" value="${esc(q)}" autocomplete="off">
+      <div class="chips">${chips}</div>
+      <div id="list"></div></div>`;
+  }
+
+  h += `<div class="foot">Supplier prices at cost. Totals are quotes until the order is locked: they move as people join or leave, or if prices, the exchange rate or shipping change.<br><br>
+    <button onclick="openAdmin()">Organiser</button></div>`;
+
+  $('#app').innerHTML = h;
+  const s = $('#search');
+  if (s) { s.oninput = e => { q = e.target.value; renderList(); }; renderList(); }
+  renderDock();
+}
+let editing = false;
+
+function billTable(items, b, label){
+  const c = S.cfg;
+  const lines = Object.keys(items).map(code => {
+    const p = P[code]; if (!p) return '';
+    const spec = items[code] % 1 ? `${p.s.split(' × ')[0]} · ${items[code] * vials(code)} vials` : p.s.replace(' × ', ' · ');
+    return `<tr><td><span class="code">${esc(code)}</span>${ql(items[code])} × ${esc(p.n)} <span class="muted">${esc(spec)}</span></td><td>${aud(p.u * items[code] * c.rate)}</td></tr>`;
+  }).join('');
+  const discRow = b.discountUSD > 0.004 ? `<tr><td style="color:var(--acc)">Tong discount ${c.discountPct}%</td><td style="color:var(--acc)">−${aud(b.discountUSD * c.rate)}</td></tr>` : '';
+  return `<table class="bill">${lines}${discRow}
+    <tr><td class="muted">Shipping${b.shipParts && b.shipUSD && (b.shipParts.boxes > 0.004 || b.shipParts.water > 0.004)
+      ? `<br><span style="font-size:12px">${aud(b.shipParts.shared * c.rate)} shared${b.shipParts.boxes > 0.004 ? ' + ' + aud(b.shipParts.boxes * c.rate) + ' per box' : ''}${b.shipParts.water > 0.004 ? ' + ' + aud(b.shipParts.water * c.rate) + ' water' : ''}</span>` : ''}</td>
+      <td class="muted">${!c.shipUSD ? 'TBC' : b.shipUSD ? aud(b.shipUSD * c.rate) : 'not charged'}</td></tr>
+    ${c.feePct ? `<tr><td class="muted">Payment fee ${c.feePct}%</td><td class="muted">${aud(b.feeUSD * c.rate)}</td></tr>` : ''}
+    <tr class="tot"><td>${label || 'Quote'}</td><td>${aud(b.totalAUD)}</td></tr></table>`;
+}
+function shipHint(items){
+  const c = S.cfg, s = S.ship; if (!c.shipUSD) return 'Shipping cost to be confirmed.';
+  const shared = s ? s.shared : c.shipUSD, n = Math.max(payersNow(), 1);
+  return `The shared part of shipping drops from ${aud(shared / n * c.rate)} to ${aud(shared / (n + 1) * c.rate)} each if one more person joins.`;
+}
+
+function renderList(){
+  const el = $('#list'); if (!el) return;
+  const t = q.trim().toLowerCase();
+  const gs = GROUPS.map(g => ({ n: g.n, v: g.v.filter(v => !cat || (cat === 'new' ? v.nw : v.k === cat)) }))
+    .filter(g => g.v.length && (!t || g.n.toLowerCase().includes(t) || g.v.some(v => v.c.toLowerCase().includes(t))));
+  const showsWater = gs.some(g => g.v.some(v => v.k === 'water'));
+  el.innerHTML = (showsWater ? `<div class="note warn" style="margin:8px 0">💧 Water is heavy to ship: the first ${SHIP.freeWater} water boxes per parcel ship free, then each extra box adds about US$${SHIP.waterFee}+ in shipping, charged to whoever orders water.</div>` : '') +
+    (gs.length ? gs.map(g => `<div class="grp"><div class="gname">${esc(g.n)}</div>${g.v.map(v => {
+      const qn = cart[v.c] || 0, oh = openHalf(v.c), mineHalf = myOrder() && myOrder().items[v.c] % 1;
+      return `<div class="var"><span class="spec"><span class="code">${esc(v.c)}</span>${esc(v.s)}${v.nw ? '<span class="new">NEW</span>' : ''}${oh && !mineHalf ? '<span class="half">½ up for grabs</span>' : ''}</span><span class="price">${aud(kitAUD(v.c))}</span>
+        <div class="qty ${qn ? 'on' : ''}"><button onclick="bump('${v.c}',-0.5)" aria-label="less">−</button><span>${ql(qn)}</span><button onclick="bump('${v.c}',0.5)" aria-label="more">+</button></div></div>`;
+    }).join('')}</div>`).join('') : `<div class="sub" style="padding:14px 0">No match.</div>`);
+}
+function setCat(k){ cat = k; document.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b.getAttribute('onclick') === `setCat('${k}')`)); renderList(); }
+function bump(code, d){
+  const v = Math.max(0, Math.min(50, (cart[code] || 0) + d));
+  if (v) cart[code] = v; else delete cart[code];
+  renderList(); renderDock();
+}
+function renderDock(){
+  const dock = $('#dock'), k = kits(cart);
+  const show = S && k > 0 && (actingFor || (S.cfg.status !== 'locked' && (!myOrder() || editing)));
+  dock.style.display = show ? 'block' : 'none';
+  if (!show) return;
+  const ctx = editCtx(), people = ctx.payers;
+  const b = bill(cart, ctx.sh, ctx.exempt);
+  $('#dockSub').textContent = `Quote · ${kitsTxt(cart)} · ${ctx.exempt ? 'no shipping' : 'incl. shipping ' + aud(b.shipUSD * S.cfg.rate)}`;
+  $('#dockTotal').textContent = aud(b.totalAUD);
+  $('#dockBtn').onclick = review;
+}
+
+/* ---------------- review & submit ---------------- */
+function review(){
+  if (actingFor) return reviewFor();
+  const ctx = editCtx(), people = ctx.payers;
+  const b = bill(cart, ctx.sh, ctx.exempt);
+  openSheet(`<h2>${myOrder() ? 'Update your order' : 'Join the order'}</h2>
+    ${billTable(cart, b)}
+    <div class="note">This is a quote at today's prices and exchange rate. ${ctx.exempt ? 'No shipping is charged on this order.' : `Shipping is split ${people} way${people === 1 ? '' : 's'} (including you), so it drops if more people join.`} You'll get the final amount when the order is locked.</div>
+    ${Object.keys(cart).some(k => cart[k] % 1) ? `<div class="note warn">Half kits only get ordered if someone takes the other half. If nobody does, the organiser will check whether you want the full box or want to drop it.</div>` : ''}
+    <label>Your name *</label><input class="inp" id="fName" value="${esc(me.name)}" placeholder="So everyone knows who's in">
+    <div class="grid2"><div><label>Mobile *</label><input class="inp" id="fPhone" inputmode="tel" value="${esc(me.phone)}" placeholder="04xx xxx xxx"></div>
+    <div><label>Email (optional)</label><input class="inp" id="fEmail" type="email" value="${esc(me.email)}" placeholder="For a copy"></div></div>
+    <div class="err" id="fErr"></div>
+    <div class="stack" style="margin-top:14px">
+      <button class="btn full" id="fGo">${myOrder() ? 'Save changes' : 'Add me to the order'}</button>
+      ${myOrder() ? `<button class="btn ghost full" onclick="leave()" style="color:var(--bad)">Remove my order</button>` : ''}
+      <button class="btn sec full" onclick="closeSheet()">Keep shopping</button>
+    </div>`);
+  $('#fGo').onclick = submit;
+}
+async function submit(){
+  me = { name: $('#fName').value.trim(), phone: $('#fPhone').value.trim(), email: $('#fEmail').value.trim() };
+  if (!me.name) { $('#fErr').textContent = 'Add your name.'; return; }
+  if (me.phone.replace(/\D/g, '').length < 8) { $('#fErr').textContent = 'Add your mobile. It lets you find your order on another phone.'; return; }
+  store.set('me', me);
+  const btn = $('#fGo'); btn.disabled = true; btn.textContent = 'Saving…';
+  const wasIn = !!myOrder(), before = S.people;
+  try {
+    S = await call('submitOrder', { token, name: me.name, phone: me.phone, email: me.email, items: cart });
+    editing = false; cart = {}; q = '';
+    render();
+    const n = S.people, t = S.cfg.target;
+    openSheet(`<h2>${wasIn ? 'Order updated ✓' : "You're in ✓"}</h2>
+      <div class="sub">${n} of ${t} people in${n >= t ? ' — the order is ready!' : ''}</div>
+      ${billTable(myOrder().items, myOrder().bill)}
+      <div class="stack" style="margin-top:14px">
+        <button class="btn wa full" onclick="shareGroup()">${n >= t ? 'Tell the group — anyone else keen?' : 'Tell the group on WhatsApp'}</button>
+        ${S.cfg.ownerPhone ? `<button class="btn sec full" onclick="sendToOwner()">Send my order to the organiser</button>` : ''}
+        <button class="btn ghost full" onclick="closeSheet()">Done</button>
+      </div>`);
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Try again';
+    $('#fErr').textContent = e.message || 'Something went wrong.';
+  }
+}
+function takeHalf(code){
+  if (myOrder() && !editing) { editing = true; cart = Object.assign({}, myOrder().items); }
+  cart[code] = (cart[code] || 0) + 0.5;
+  render(); renderDock(); toast(`Added ½ ${P[code].n} — tap Review to save`);
+}
+function editMine(){ editing = true; cart = Object.assign({}, myOrder().items); render(); const p = $('#picker'); if (p) p.scrollIntoView({ behavior: 'smooth' }); }
+async function leave(){
+  if (!confirm('Remove your order from this round?')) return;
+  try { S = await call('removeOrder', token); editing = false; cart = {}; closeSheet(); render(); toast('Order removed'); }
+  catch(e){ $('#fErr').textContent = e.message; }
+}
+
+/* ---------------- self-service helpers ---------------- */
+function findMine(){
+  openSheet(`<h2>Find my order</h2><div class="sub">Enter the mobile number you ordered with.</div>
+    <label>Mobile</label><input class="inp" id="mPhone" inputmode="tel" placeholder="04xx xxx xxx" value="${esc(me.phone)}">
+    <div class="err" id="mErr"></div>
+    <div class="stack" style="margin-top:12px"><button class="btn full" id="mGo">Find it</button><button class="btn sec full" onclick="closeSheet()">Cancel</button></div>`);
+  $('#mGo').onclick = async () => {
+    $('#mGo').disabled = true;
+    try {
+      const r = await call('findOrder', $('#mPhone').value);
+      token = r.token; store.set('token', token); S = r.state;
+      me.phone = $('#mPhone').value; const o = myOrder(); if (o) me.name = o.name; store.set('me', me);
+      closeSheet(); render(); toast('Found your order');
+    } catch(e){ $('#mGo').disabled = false; $('#mErr').textContent = e.message; }
+  };
+}
+async function iPaid(){
+  if (!confirm('Have you sent the payment?')) return;
+  try { S = await call('claimPaid', token); render(); toast('Thanks! The organiser has been told'); }
+  catch(e){ toast(e.message); }
+}
+function announceText(){
+  const c = A.cfg;
+  return `🧪 *${c.groupName}: round ${c.round} is open!*\n\nAdd your order here: ${SHARE_URL}\n\n` +
+    `• Prices at cost from Tong (codes shown), shipping split between everyone\n• You can take half a box (5 vials) and share it\n` +
+    `• Your total is a quote until I lock the order\n\nI'll place it once we've got ${c.target}+ people.`;
+}
+function lockedText(){
+  const c = A.cfg;
+  return `🔒 *${c.groupName}: round ${c.round} is locked and ordered.*\n\n` +
+    `Open the link to see your *final amount*${c.payid ? ' and my PayID' : ''}: ${SHARE_URL}\n\n` +
+    `Tap *"I've paid"* once you've sent it. Thanks all!`;
+}
+function announce(){ wa(announceText()); }
+function tellLocked(){ wa(lockedText()); }
+
+/* ---------------- organiser: order on someone's behalf ---------------- */
+function startActing(id){
+  const o = id ? A.orders.find(x => x.id === id) : null;
+  if (o) { actingFor = { id: o.id, name: o.name, phone: o.phone || '', email: o.email || '' }; cart = Object.assign({}, o.items); go(); return; }
+  openSheet(`<h2>Add someone's order</h2>
+    <label>Their name *</label><input class="inp" id="pName">
+    <div class="grid2"><div><label>Mobile (optional)</label><input class="inp" id="pPhone" inputmode="tel"></div>
+    <div><label>Email (optional)</label><input class="inp" id="pEmail" type="email"></div></div>
+    <div class="err" id="aErr"></div>
+    <div class="stack" style="margin-top:14px"><button class="btn full" id="pGo">Pick their kits</button>
+    <button class="btn sec full" onclick="renderAdmin()">Back</button></div>`);
+  $('#pGo').onclick = () => {
+    const name = $('#pName').value.trim(); if (!name) { $('#aErr').textContent = 'Add a name.'; return; }
+    actingFor = { name, phone: $('#pPhone').value.trim(), email: $('#pEmail').value.trim() }; cart = {}; go();
+  };
+  function go(){ editing = false; q = ''; cat = ''; closeSheet(); render(); window.scrollTo(0, 0); }
+}
+function cancelActing(){ actingFor = null; cart = {}; render(); renderAdmin(); }
+function reviewFor(){
+  const ctx = editCtx(), b = bill(cart, ctx.sh, ctx.exempt);
+  openSheet(`<h2>Order for ${esc(actingFor.name)}</h2>${billTable(cart, b)}
+    <div class="note">Saved as their quote. They'll see it once you share the link (it isn't tied to their phone, so you manage edits for these).</div>
+    <label>Name</label><input class="inp" id="fName" value="${esc(actingFor.name)}">
+    <div class="grid2"><div><label>Mobile</label><input class="inp" id="fPhone" inputmode="tel" value="${esc(actingFor.phone)}"></div>
+    <div><label>Email</label><input class="inp" id="fEmail" type="email" value="${esc(actingFor.email)}"></div></div>
+    <div class="err" id="fErr"></div>
+    <div class="stack" style="margin-top:14px"><button class="btn full" id="fGo">Save ${esc(actingFor.name)}'s order</button>
+    ${actingFor.id ? `<button class="btn ghost full" style="color:var(--bad)" id="fDel">Remove ${esc(actingFor.name)}</button>` : ''}
+    <button class="btn sec full" onclick="closeSheet()">Keep picking</button></div>`);
+  $('#fGo').onclick = async () => {
+    const d = { id: actingFor.id, name: $('#fName').value.trim(), phone: $('#fPhone').value.trim(), email: $('#fEmail').value.trim(), items: cart };
+    if (!d.name) { $('#fErr').textContent = 'Add a name.'; return; }
+    $('#fGo').disabled = true;
+    try { A = await call('admin', adminPin, 'upsertFor', d); actingFor = null; cart = {}; S = await call('getState', token); render(); renderAdmin(); toast(`Saved ${d.name}`); }
+    catch(e){ $('#fGo').disabled = false; $('#fErr').textContent = e.message; }
+  };
+  if ($('#fDel')) $('#fDel').onclick = async () => {
+    if (!confirm(`Remove ${actingFor.name}'s order?`)) return;
+    const id = actingFor.id; actingFor = null; cart = {}; await adminDo('remove', { id }); toast('Removed');
+  };
+}
+
+/* ---------------- WhatsApp ---------------- */
+function intlPhone(phone){
+  let d = String(phone || '').replace(/\D/g, '');
+  if (/^0[45]\d{8}$/.test(d)) d = '61' + d.slice(1);      /* Australian mobile 04xx xxx xxx -> 614xx xxx xxx */
+  return d;
+}
+function wa(text, phone){ openUrl('https:' + '/' + '/wa.me/' + intlPhone(phone) + '?text=' + encodeURIComponent(text)); }
+function shareGroup(){
+  const c = S.cfg, n = S.people;
+  const names = S.orders.map(o => o.name).join(', ');
+  const msg = n >= c.target
+    ? `🧪 ${c.groupName}: order's ready — ${n} in (${names}). Anyone else keen? More people = cheaper shipping.\n${SHARE_URL}`
+    : `🧪 ${c.groupName}: ${n}/${c.target} in${names ? ' (' + names + ')' : ''}. Need ${c.target - n} more — add your order here:\n${SHARE_URL}`;
+  const hv = (S.openHalves || []).filter(x => P[x.code]).map(x => `${P[x.code].n} ${P[x.code].s.split(' × ')[0]} [${x.code}]`);
+  wa(msg + (hv.length && c.status !== 'locked' ? `\n\nAnyone want to split a kit? Half going: ${hv.join(', ')}` : ''));
+}
+function orderText(o){
+  const c = S.cfg;
+  return `Order — ${c.groupName} (round ${c.round})\nName: ${o.name}\n` +
+    Object.keys(o.items).map(k => `• [${k}] ${ql(o.items[k])} × ${P[k].n} ${P[k].s}${o.items[k] % 1 ? ' (' + o.items[k] * vials(k) + ' vials)' : ''}`).join('\n') +
+    `\n${c.status === 'locked' ? 'Final' : 'Quote'}: ${aud(o.bill.totalAUD)} ${o.noShip ? '(no shipping)' : `(shipping split ${payersNow()} ways)`}`;
+}
+function sendToOwner(){ wa(orderText(myOrder()), S.cfg.ownerPhone); }
+
+/* ---------------- sheet ---------------- */
+function openSheet(html){ $('#panel').innerHTML = html; $('#sheet').classList.add('show'); }
+function closeSheet(){ $('#sheet').classList.remove('show'); }
+$('#sheet').onclick = e => { if (e.target.id === 'sheet') closeSheet(); };
+
+/* ---------------- organiser ---------------- */
+function openAdmin(){
+  if (adminPin) return adminLoad();
+  openSheet(`<h2>Organiser</h2><label>PIN</label><input class="inp" id="aPin" type="password" inputmode="numeric" placeholder="Default is 1234">
+    <div class="err" id="aErr"></div><div class="stack" style="margin-top:12px"><button class="btn full" id="aGo">Open</button>
+    <button class="btn sec full" onclick="closeSheet()">Cancel</button></div>`);
+  $('#aGo').onclick = () => { adminPin = $('#aPin').value; adminLoad(); };
+}
+async function adminDo(action, data){
+  try { A = await call('admin', adminPin, action, data || {}); S = await call('getState', token); render(); renderAdmin(); return true; }
+  catch(e){ if (/PIN/.test(e.message)) adminPin = null; const el = $('#aErr'); if (el) el.textContent = e.message; else toast(e.message); return false; }
+}
+function adminLoad(){ return adminDo('get'); }
+function renderAdmin(){
+  if (!A.exportLinks && lastExport) A.exportLinks = lastExport;
+  const c = A.cfg, n = A.people;
+  const combo = Object.keys(A.combined).sort().map(k => `${Math.ceil(A.combined[k])} × ${k}  ${P[k] ? P[k].n + ' ' + P[k].s : ''}  @ US$${P[k] ? P[k].u : '?'}${A.combined[k] % 1 ? '  (½ unclaimed)' : ''}`).join('\n');
+  const oh = (A.openHalves || []).filter(x => P[x.code]);
+  const ohHtml = oh.length ? `<div class="note warn" style="margin-top:12px"><b>${oh.length} half kit${oh.length === 1 ? '' : 's'} without a partner.</b> The supplier only sells full boxes, so give someone the full box or drop their half before you lock.</div>
+    <ul class="people split">${oh.map(x => x.holders.map(hd => `<li><span class="sp"><b>${esc(hd.name)}</b> · <span class="code">${esc(x.code)}</span>½ ${esc(P[x.code].n)} <span class="muted">${esc(P[x.code].s.split(' × ')[0])}</span></span>
+      <button class="tag" onclick="adminDo('setQty',{id:'${hd.id}',code:'${x.code}',qty:${hd.qty + 0.5}})">Full box</button>
+      <button class="tag" onclick="adminDo('setQty',{id:'${hd.id}',code:'${x.code}',qty:${hd.qty - 0.5}})">Drop ½</button></li>`).join('')).join('')}</ul>` : '';
+  const discUSD = A.discountUSD || 0, totalUSD = A.productsUSD - discUSD + c.shipUSD;
+  const totLine = `Products US$${A.productsUSD.toFixed(2)}${discUSD ? ` − ${c.discountPct}% discount US$${discUSD.toFixed(2)}` : ''} + shipping US$${c.shipUSD.toFixed(2)} = US$${totalUSD.toFixed(2)}`;
+  lastCombo = combo + '\n\n' + totLine;
+  const collected = A.orders.reduce((s,o) => s + o.bill.totalAUD, 0);
+  openSheet(`<h2>Organiser · round ${c.round}</h2>
+    <div class="sub">${n} ${n === 1 ? 'person' : 'people'} · ${c.status}</div>
+
+    <label>Combined order for the supplier</label>
+    ${A.ship && A.ship.plan ? (() => { const p = A.ship.plan, alt = p.best.kind === 'separate' ? p.together : p.separate;
+      return `<div class="note" style="margin-top:8px"><b>Shipping:</b> ${esc(shipSummary(p))}${p.best.water && p.best.water.parcels ? ` <span class="muted">(waters ${esc(p.waterDays)})</span>` : ''}` +
+        (alt && Math.abs(alt.cost - p.total) > 0.01 ? `<br><span class="muted">${alt.kind === 'together' ? 'All in ' + esc(p.methodName) : 'Waters by ' + esc(p.waterName)} would be US$${alt.cost.toFixed(2)} (${alt.cost > p.total ? 'US$' + (alt.cost - p.total).toFixed(2) + ' more' : 'US$' + (p.total - alt.cost).toFixed(2) + ' less'})</span>` : '') +
+        (A.ship.quoted ? `<br><b>Using Yoki's quote: US$${A.ship.total.toFixed(2)}</b> <span class="muted">(calculated US$${A.ship.calculated.toFixed(2)})</span>` : '') +
+        `<br><span class="muted">Shared ÷${A.ship.payers}: US$${A.ship.shared.toFixed(2)} · per box US$${(A.ship.perBox || 0).toFixed(2)}${A.ship.perWater ? ' · extra per water box US$' + A.ship.perWater.toFixed(2) : ''}</span></div>`; })() : ''}
+    <pre class="combo">${esc(combo || 'Nothing yet')}\n\n${esc(totLine)}</pre>
+    <button class="btn wa full" style="margin-top:6px" onclick="${c.status === 'locked' ? 'tellLocked()' : 'announce()'}">${c.status === 'locked' ? '🔒 Tell the group it\'s locked (they check their amount)' : '📣 Announce this round to the group'}</button>
+    <button class="btn wa full" style="margin-top:6px" onclick="sendGroup()" ${Object.keys(A.combined).length ? '' : 'disabled'}>Send full order to Yoki (group, WhatsApp)</button>
+    <div class="row" style="gap:8px;margin-top:6px"><button class="btn sec sp" onclick="copyCombo()">Copy as text</button>
+      <button class="btn sp" onclick="makeExcel()" ${Object.keys(A.combined).length ? '' : 'disabled'}>Make Excel files</button></div>
+    ${A.exportLinks ? `<div class="note" style="margin-top:8px"><b>Excel ready</b> · ${A.exportLinks.lines} Tong lines · ${A.exportLinks.people} people · US$${A.exportLinks.totalUSD.toFixed(2)}. Opens in your Google account, then downloads as .xlsx.</div>
+      <div class="stack" style="margin-top:6px">
+        <button class="btn full" onclick="openLink('book')">⬇ Full workbook (.xlsx): Tong order + payments + a tab per person</button>
+        <button class="btn sec full" onclick="openLink('tong')">⬇ Tong order only (.xlsx): to send Yoki</button>
+        <button class="btn ghost full" onclick="openLink('sheet')">Open in Google Sheets</button></div>` : ''}
+    ${ohHtml}
+
+    <label>People · collecting ${aud(collected)} · shipping split ${A.payers} way${A.payers === 1 ? '' : 's'} · tap WA to send each person their breakdown</label>
+    <button class="btn full" style="margin:4px 0 6px" onclick="startActing()">+ Add someone's order</button>
+    <ul class="people">${A.orders.map(o => `<li style="align-items:center"><span class="sp"><b>${esc(o.name)}</b> <button class="tag" onclick="startActing('${o.id}')">Edit</button><br>
+      <span class="muted" style="font-size:12px">${esc(Object.keys(o.items).map(k => k + ' ' + ql(o.items[k]) + '× ' + (P[k] ? P[k].n + ' ' + P[k].s.split(' × ')[0] : '')).join(', '))}</span><br>
+      <span class="muted" style="font-size:12px">${esc(o.phone || '')} ${esc(o.email || '')}</span></span>
+      <span style="text-align:right">${aud(o.bill.totalAUD)}${o.quoteAUD && Math.abs(o.quoteAUD - o.bill.totalAUD) > 0.004 ? `<br><span class="muted" style="font-size:11px">quoted ${aud(o.quoteAUD)}</span>` : ''}</span>
+      <button class="tag ${o.paid ? 'paid' : ''}" style="${!o.paid && o.paidClaim ? 'background:#fff2e0;color:#b35c00' : ''}" onclick="adminDo('setPaid',{id:'${o.id}',paid:${!o.paid}})" title="${!o.paid && o.paidClaim ? 'They tapped I\'ve paid. Tap to confirm' : ''}">${o.paid ? 'Paid' : o.paidClaim ? 'Says paid' : 'Unpaid'}</button>
+      <button class="tag" style="${o.noShip ? 'background:#fff2e0;color:#b35c00' : ''}" onclick="adminDo('setNoShip',{id:'${o.id}',noShip:${!o.noShip}})" title="Tap to switch">${o.noShip ? 'No ship' : 'Ship ✓'}</button>
+      <button class="tag" style="background:#25d366;color:#08331b" onclick="payMsg('${o.id}')" title="${o.phone ? 'Send to ' + esc(o.phone) : 'WhatsApp will ask who to send to'}">WA</button></li>`).join('') || '<li class="muted">Nobody yet</li>'}</ul>
+
+    <label>Settings</label>
+    <div class="grid2">
+      <div><label>Group name</label><input class="inp" id="sName" value="${esc(c.groupName)}"></div>
+      <div><label>People target</label><input class="inp" id="sTarget" inputmode="numeric" value="${c.target}"></div>
+      <div><label>Shipping method</label><select class="inp" id="sShipM">${['ups', 'fedex', 'standard'].map(k => `<option value="${k}" ${c.shipMethod === k ? 'selected' : ''}>${esc(SHIP.methods[k].name)} (US$${SHIP.methods[k].base})</option>`).join('')}<option value="manual" ${c.shipMethod === 'manual' ? 'selected' : ''}>Manual amount</option></select></div>
+      <div><label>Waters</label><select class="inp" id="sWater"><option value="auto" ${c.waterMode === 'auto' ? 'selected' : ''}>Cheapest way</option><option value="together" ${c.waterMode === 'together' ? 'selected' : ''}>Same parcel</option><option value="separate" ${c.waterMode === 'separate' ? 'selected' : ''}>Separately by Standard</option></select></div>
+      <div><label>Tong discount %</label><input class="inp" id="sDisc" inputmode="decimal" value="${c.discountPct || 0}"></div>
+      <div><label>Shipping quoted by Yoki US$</label><input class="inp" id="sQuote" inputmode="decimal" value="${c.shipQuoteUSD || ''}" placeholder="blank = calculated"></div>
+      <div><label>Manual shipping US$</label><input class="inp" id="sShip" inputmode="decimal" value="${c.manualShipUSD != null ? c.manualShipUSD : c.shipUSD}" placeholder="only for Manual"></div>
+      <div><label>Exchange rate</label><select class="inp" id="sMode"><option value="live" ${c.rateMode === 'live' ? 'selected' : ''}>Live + buffer</option><option value="manual" ${c.rateMode !== 'live' ? 'selected' : ''}>Manual</option></select></div>
+      <div><label>Buffer (added to live)</label><input class="inp" id="sBuf" inputmode="decimal" value="${c.rateBuffer}"></div>
+      <div><label>Manual AUD per USD</label><input class="inp" id="sRate" inputmode="decimal" value="${c.manualRate}"></div>
+      <div><label>Rate in use</label><div class="inp" style="background:#f6f7f5">${Number(c.rate).toFixed(4)}<span class="muted" style="font-size:12px"> · ${esc(c.rateSource)}${c.liveRate ? ' · live ' + Number(c.liveRate).toFixed(4) : ''}</span></div></div>
+      <div><label>Payment fee %</label><input class="inp" id="sFee" inputmode="decimal" value="${c.feePct}"></div>
+      <div><label>Your PayID</label><input class="inp" id="sPayid" value="${esc(c.payid)}"></div>
+      <div><label>Your WhatsApp (61…)</label><input class="inp" id="sPhone" inputmode="tel" value="${esc(c.ownerPhone)}"></div>
+      <div><label>Order emails to</label><input class="inp" id="sEmail" type="email" value="${esc(c.notifyEmail)}" placeholder="Your Google email"></div>
+      <div><label>New PIN (4+)</label><input class="inp" id="sPin" inputmode="numeric" placeholder="Leave blank to keep"></div>
+    </div>
+    <div class="err" id="aErr"></div>
+    <div class="stack" style="margin-top:12px">
+      <button class="btn full" onclick="saveSettings()">Save settings</button>
+      ${c.status === 'open'
+        ? `<button class="btn sec full" onclick="if(confirm(lockMsg()))adminDo('lock')">Lock order (I'm placing it)</button>`
+        : `<button class="btn sec full" onclick="adminDo('unlock')">Unlock</button>
+           <button class="btn ghost full" onclick="if(confirm('Start a fresh round? This round stays in the sheet.'))adminDo('newRound')">Start new round</button>`}
+      <button class="btn ghost full" onclick="closeSheet()">Close</button>
+    </div>`);
+}
+let lastExport = null;
+async function makeExcel(){
+  toast('Building the Excel files…');
+  if (await adminDo('exportSheets')) { lastExport = A.exportLinks; renderAdmin(); toast('Excel files ready'); }
+}
+function openLink(k){ const l = (A && A.exportLinks) || lastExport; if (l && l[k]) openUrl(l[k]); }
+function lockMsg(){
+  const n = (A.openHalves || []).length;
+  return (n ? `Heads up: ${n} half kit${n === 1 ? ' has' : 's have'} no partner and will be ordered as full boxes.\n\n` : '') +
+    'Lock the order? People can no longer join or edit, and anyone with an email gets their final amount.';
+}
+async function saveSettings(){
+  const d = { groupName: $('#sName').value, target: $('#sTarget').value, shipUSD: $('#sShip').value, shipMethod: $('#sShipM').value, waterMode: $('#sWater').value, discountPct: $('#sDisc').value || 0, shipQuoteUSD: $('#sQuote').value || 0, rate: $('#sRate').value, rateMode: $('#sMode').value, rateBuffer: $('#sBuf').value,
+    feePct: $('#sFee').value, payid: $('#sPayid').value, ownerPhone: $('#sPhone').value, notifyEmail: $('#sEmail').value };
+  const pin = $('#sPin').value.trim(); if (pin) d.adminPin = pin;
+  if (await adminDo('saveCfg', d)) { if (pin) adminPin = pin; toast('Saved'); }
+}
+function personText(o, c, n){
+  const locked = c.status === 'locked';
+  const lines = PRODUCTS.map(p => p.c).filter(k => o.items[k]).map(k => {
+    const q = o.items[k], half = q % 1 ? ` (${q * vials(k)} vials)` : '';
+    return `• [${k}] ${ql(q)} × ${P[k].n} ${P[k].s.split(' × ')[0]}${half}: ${aud(P[k].u * q * c.rate)}`;
+  }).join('\n');
+  return `Hi ${o.name}, here's your part of ${c.groupName} (round ${c.round}, ${n} people):\n\n${lines}\n` +
+    (o.bill.discountUSD > 0.004 ? `• Tong discount ${c.discountPct}%: −${aud(o.bill.discountUSD * c.rate)}\n` : '') +
+    (o.noShip ? `• Shipping: not charged\n` : (() => { const sp = o.bill.shipParts || { shared: o.bill.shipUSD, boxes: 0, water: 0 };
+      return `• Shipping: ${aud(o.bill.shipUSD * c.rate)} (${aud(sp.shared * c.rate)} shared ÷${A.payers}` +
+        (sp.boxes > 0.004 ? ` + ${aud(sp.boxes * c.rate)} for your boxes` : '') + (sp.water > 0.004 ? ` + ${aud(sp.water * c.rate)} for water` : '') + `)\n`; })()) +
+    (c.feePct ? `• Payment fee ${c.feePct}%: ${aud(o.bill.feeUSD * c.rate)}\n` : '') +
+    `\n*${locked ? 'Final total' : 'Your total (quote)'}: ${aud(o.bill.totalAUD)}*` +
+    (o.quoteAUD && Math.abs(o.quoteAUD - o.bill.totalAUD) > 0.004 ? ` (first quoted ${aud(o.quoteAUD)})` : '') +
+    `\nRate ${Number(c.rate).toFixed(4)} AUD/USD` +
+    (locked && c.payid ? `\n\nPlease pay by PayID: ${c.payid}\nReference: ${o.name}` : (locked ? '' : `\n\nThis may still change slightly before the order's locked. I'll send the final amount then.`));
+}
+function payMsg(id){
+  const o = A.orders.find(x => x.id === id);
+  wa(personText(o, A.cfg, A.people), o.phone);
+}
+function groupText(){
+  const c = A.cfg, n = A.people;
+  const codes = PRODUCTS.map(p => p.c).filter(k => A.combined[k]);
+  const lines = codes.map(k => {
+    const q = Math.ceil(A.combined[k]);
+    return `• [${k}] ${P[k].n} ${P[k].s}: ${q} kit${q === 1 ? '' : 's'} × US$${P[k].u} = US$${(q * P[k].u).toFixed(2)}`;
+  }).join('\n');
+  const kits = codes.reduce((s, k) => s + Math.ceil(A.combined[k]), 0);
+  const disc = A.discountUSD || 0, total = A.productsUSD - disc + c.shipUSD;
+  return `Hi Yoki, here's our order (${c.groupName}, round ${c.round}):\n\n${lines}\n\n` +
+    `${kits} kit${kits === 1 ? '' : 's'} · products US$${A.productsUSD.toFixed(2)}` + (disc ? ` − ${c.discountPct}% discount US$${disc.toFixed(2)}` : '') +
+    (c.shipUSD ? ` + shipping US$${c.shipUSD.toFixed(2)} = *US$${total.toFixed(2)}*` : ` (+ shipping)`) + `\n` +
+    (A.ship && A.ship.plan && !A.ship.quoted ? `Shipping: ${shipSummary(A.ship.plan)}\n` : '') + `\n` +
+    `Everyone who's ordered (${n}): I've sent you your own breakdown and total, so check your messages 👍`;
+}
+function sendGroup(){ wa(groupText()); }
+
+/* ---------------- boot ---------------- */
+async function load(){
+  try { S = await call('getState', token); render(); window.__loaded = true; }
+  catch(e){ window.__showErr(e.message); }
+}
+load();
+setInterval(() => { if (S && !$('#sheet').classList.contains('show') && !editing && !actingFor && !kits(cart)) call('getState', token).then(s => { S = s; render(); }).catch(()=>{}); }, 30000);
+Object.assign(window, { bump, setCat, takeHalf, editMine, leave, shareGroup, sendToOwner, closeSheet, openAdmin, adminDo, saveSettings,
+  payMsg, copy, copyCombo: () => copy(lastCombo), sendGroup, announce, tellLocked, findMine, iPaid, makeExcel, openLink, startActing, cancelActing, renderAdmin, lockMsg, review });
+}
 </script>
 </body>
 </html>
