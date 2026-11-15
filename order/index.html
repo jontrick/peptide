@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Group Order</title>
+<!-- Launcher for the group order page (Google Apps Script). Gives it a short link and the "P" home-screen icon. -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Group Order">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0e7c66">
+<style>
+  html, body { margin: 0; height: 100%; background: #f4f5f2; }
+  iframe { border: 0; width: 100%; height: 100%; display: block; }
+  .fallback { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px; text-align: center;
+    font: 13px -apple-system, BlinkMacSystemFont, sans-serif; color: #6b7176; display: none; }
+  .fallback a { color: #0e7c66; }
+</style>
+</head>
+<body>
+<iframe id="app" title="Group Order" allow="clipboard-write"
+  src="https://script.google.com/macros/s/AKfycbxOO_wejHAUB-7xq452XJLuJCf8BUy7E6smlJNloyklga-VCQXQCl3x8QNySPEryXb5/exec"></iframe>
+<div class="fallback" id="fb">Not loading? <a href="https://script.google.com/macros/s/AKfycbxOO_wejHAUB-7xq452XJLuJCf8BUy7E6smlJNloyklga-VCQXQCl3x8QNySPEryXb5/exec">Open the order page directly</a></div>
+<script>
+  // show a direct link if the embedded page hasn't loaded after a while
+  var loaded = false;
+  document.getElementById('app').addEventListener('load', function () { loaded = true; });
+  setTimeout(function () { if (!loaded) document.getElementById('fb').style.display = 'block'; }, 12000);
+</script>
+</body>
+</html>
